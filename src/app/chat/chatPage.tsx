@@ -19,7 +19,7 @@ import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 export default function ChatPage({ chatId }: { chatId?: string }) {
-	const [model, setModel] = useState("meta-llama/llama-3.3-8b-instruct:free");
+	const [model, setModel] = useState("google/gemini-2.0-flash-exp:free");
 	const [input, setInput] = useState("");
 
 	const modelRef = useRef(model);
