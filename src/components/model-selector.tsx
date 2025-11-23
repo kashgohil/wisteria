@@ -1,7 +1,13 @@
 "use client";
 
 import { models } from "@/app/constants";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
 
 interface ModelSelectorProps {
 	value: string;
@@ -18,7 +24,7 @@ export function ModelSelector({ value, onValueChange }: ModelSelectorProps) {
 				<SelectValue placeholder="Select a model" />
 			</SelectTrigger>
 			<SelectContent
-				className="w-50"
+				className="min-w-[300px]"
 				align="center"
 			>
 				{models.map((model) => (
@@ -26,7 +32,12 @@ export function ModelSelector({ value, onValueChange }: ModelSelectorProps) {
 						key={model.id}
 						value={model.id}
 					>
-						{model.name}
+						<div className="flex w-full items-center justify-between gap-4">
+							<span>{model.name}</span>
+							<span className="text-xs text-muted-foreground">
+								{model.pricing}
+							</span>
+						</div>
 					</SelectItem>
 				))}
 			</SelectContent>
