@@ -51,11 +51,22 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 		},
 	});
 
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
+	const submitMessage = () => {
 		if (input.trim()) {
 			sendMessage({ text: input });
 			setInput("");
+		}
+	};
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		submitMessage();
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			submitMessage();
 		}
 	};
 
@@ -171,11 +182,12 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 						className="flex flex-col gap-4"
 					>
 						<Textarea
-							className="border-none outline-none focus-within:outline-none resize-none h-11 !p-0 !ring-0"
+							className="border-none outline-none focus-within:outline-none resize-none min-h-[2.75rem] py-2.5 px-0 !ring-0 shadow-none"
 							placeholder="Type your message here..."
 							id="message"
 							value={input}
 							onChange={handleInputChange}
+							onKeyDown={handleKeyDown}
 							disabled={status === "streaming"}
 						/>
 						<div className="flex items-center justify-between">
