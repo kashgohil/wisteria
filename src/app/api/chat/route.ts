@@ -32,12 +32,10 @@ export async function POST(req: Request) {
 			);
 		}
 
-		const { userId } = await auth();
+		let { userId } = await auth();
 
 		if (!userId) {
-			return new Response(JSON.stringify({ error: "Unauthorized" }), {
-				status: 401,
-			});
+			userId = "anonymous";
 		}
 
 		console.log("Processing chat request:", {
