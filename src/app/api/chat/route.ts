@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { chats as chatsTable, messages as messagesTable } from "@/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateText, streamText } from "ai";
+import { convertToModelMessages, generateText, streamText } from "ai";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
 		const chatModel = openRouter(model);
 
 		const result = streamText({
-			messages,
+			messages: convertToModelMessages(messages),
 			model: chatModel,
 			onFinish: async ({ text, usage, response }) => {
 				await db.insert(messagesTable).values({
