@@ -10,6 +10,8 @@ const openRouter = createOpenRouter({
 	apiKey: process.env.OPENROUTER_API_KEY!,
 });
 
+const TITLE_GENERATION_MODEL = "google/gemini-2.5-flash-lite";
+
 // Helper function to revalidate chat-related paths
 function revalidateChatPaths() {
 	revalidatePath("/");
@@ -47,11 +49,17 @@ export async function POST(req: Request) {
 		let chatId = chatIdParam;
 
 		if (!chatId) {
-			const titleModel = openRouter("google/gemini-2.0-flash-exp:free");
-			const result = await generateText({
-				model: titleModel,
-				prompt: `Generate a name for the chat based on the following message: ${messages[0].content}. The name should be a single word or phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
-			});
+			let title = "New Chat";
+			try {
+				const titleModel = openRouter(TITLE_GENERATION_MODEL);
+				const result = await generateText({
+					model: titleModel,
+					prompt: `Generate a name for the chat based on the following message: ${messages[0].content}. The name should be a single word or phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
+				});
+				title = result.text;
+			} catch (error) {
+				console.error("Title generation failed:", error);
+			}
 
 			const newChat = await db
 				.insert(chatsTable)
@@ -59,7 +67,7 @@ export async function POST(req: Request) {
 					id: nanoid(10),
 					userId,
 					projectId,
-					name: result.text,
+					name: title,
 				})
 				.returning({ id: chatsTable.id });
 
@@ -79,6 +87,9 @@ export async function POST(req: Request) {
 			})
 			.then(() => {
 				revalidateChatPaths();
+			})
+			.catch((error) => {
+				console.error("Failed to save user message:", error);
 			});
 
 		const chatModel = openRouter(model);

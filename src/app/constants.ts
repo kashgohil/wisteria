@@ -1,11 +1,5 @@
 export const models = [
 	{
-		id: "google/gemini-2.0-flash-exp:free",
-		name: "Gemini 2.0 Flash Experimental",
-		provider: "google",
-		pricing: "Free",
-	},
-	{
 		id: "meta-llama/llama-3.3-70b-instruct:free",
 		name: "Llama 3.3 70B Instruct",
 		provider: "meta",
