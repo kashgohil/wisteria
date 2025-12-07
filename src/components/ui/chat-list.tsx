@@ -2,6 +2,7 @@
 
 import { api } from "@/../convex/_generated/api";
 import { Doc, Id } from "@/../convex/_generated/dataModel";
+import { useAnonymousId } from "@/hooks/use-anonymous-id";
 import { cn } from "@/lib/utils";
 import { useMutation } from "convex/react";
 import { Edit, MoreVertical, Trash2 } from "lucide-react";
@@ -23,15 +24,16 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 	const { chats } = props;
 	const searchParams = useSearchParams();
 	const chatId = searchParams.get("id");
+	const anonymousId = useAnonymousId();
 	const deleteChatMutation = useMutation(api.chats.remove);
 
-	const [isOpen, setIsOpen] = useState(false);
+	const [chatToDelete, setChatToDelete] = useState<Id<"chats"> | null>(null);
 
 	const removeChat = useCallback(
 		(chatId: Id<"chats">) => {
-			deleteChatMutation({ chatId });
+			deleteChatMutation({ chatId, anonymousId: anonymousId ?? undefined });
 		},
-		[deleteChatMutation],
+		[deleteChatMutation, anonymousId],
 	);
 
 	if (!chats?.length) {
@@ -92,7 +94,7 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 										<DropdownMenuItem
 											className="group/item"
 											onClick={() => {
-												setIsOpen(true);
+												setChatToDelete(item._id);
 											}}
 										>
 											<Trash2
@@ -106,18 +108,22 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 							</div>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
-
-					<ConfirmationDialog
-						open={isOpen}
-						onOpenChange={setIsOpen}
-						title="Delete chat"
-						description="Are you sure you want to delete this chat?"
-						action="Delete"
-						cancel="Cancel"
-						onAction={() => removeChat(item._id)}
-					/>
 				</Fragment>
 			))}
+
+			<ConfirmationDialog
+				open={chatToDelete !== null}
+				onOpenChange={(open) => !open && setChatToDelete(null)}
+				title="Delete chat"
+				description="Are you sure you want to delete this chat?"
+				action="Delete"
+				cancel="Cancel"
+				onAction={() => {
+					if (chatToDelete) {
+						removeChat(chatToDelete);
+					}
+				}}
+			/>
 		</>
 	);
 }

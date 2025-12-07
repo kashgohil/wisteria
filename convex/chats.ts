@@ -60,13 +60,14 @@ export const create = mutation({
 });
 
 export const remove = mutation({
-	args: { chatId: v.id("chats") },
+	args: { chatId: v.id("chats"), anonymousId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
+		const userId = identity?.subject ?? args.anonymousId;
+
+		if (!userId) {
 			throw new Error("Unauthorized");
 		}
-		const userId = identity.subject;
 
 		const chat = await ctx.db.get(args.chatId);
 		if (!chat || chat.userId !== userId) {
