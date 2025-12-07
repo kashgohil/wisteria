@@ -1,5 +1,6 @@
 "use client";
 
+import { ThinkingBlock } from "@/components/chat/thinking-block";
 import { ModeSelector } from "@/components/mode-selector";
 import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
@@ -108,6 +109,15 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 						>
 							<div className="prose prose-sm dark:prose-invert max-w-none">
 								{message.parts.map((part, partIndex) => {
+									if (part.type === "reasoning") {
+										return (
+											<ThinkingBlock
+												key={partIndex}
+												reasoning={part.text}
+												isStreaming={part.state === "streaming"}
+											/>
+										);
+									}
 									if (part.type === "text") {
 										return (
 											<ReactMarkdown
