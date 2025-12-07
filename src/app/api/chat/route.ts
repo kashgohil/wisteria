@@ -41,6 +41,13 @@ export async function POST(req: Request) {
 
 		// Get the latest user message (last message in the array)
 		const latestUserMessage = messages[messages.length - 1];
+		// Extract text content from the message (handles both string and parts format)
+		const userMessageContent =
+			typeof latestUserMessage.content === "string"
+				? latestUserMessage.content
+				: (latestUserMessage.parts?.find(
+						(p: { type: string }) => p.type === "text",
+					)?.text ?? "");
 
 		if (!chatId) {
 			let title = "New Chat";
@@ -48,7 +55,7 @@ export async function POST(req: Request) {
 				const titleModel = openRouter(TITLE_GENERATION_MODEL);
 				const result = await generateText({
 					model: titleModel,
-					prompt: `Generate a name for the chat based on the following message: ${latestUserMessage.content}. The name should be a single word or phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
+					prompt: `Generate a name for the chat based on the following message: ${userMessageContent}. The name should be a single word or phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
 				});
 				title = result.text;
 			} catch (error) {
@@ -63,16 +70,18 @@ export async function POST(req: Request) {
 			console.log("New chat created:", chatId);
 		}
 
-		// Save only the latest user message (not all messages)
-		fetchMutation(api.messages.create, {
-			chatId: chatId as Id<"chats">,
-			content: latestUserMessage.content,
-			model,
-			role: "user",
-			anonymousId,
-		}).catch((error) => {
+		// Save the user message (await to ensure it's saved before proceeding)
+		try {
+			await fetchMutation(api.messages.create, {
+				chatId: chatId as Id<"chats">,
+				content: userMessageContent,
+				model,
+				role: "user",
+				anonymousId,
+			});
+		} catch (error) {
 			console.error("Failed to save user message:", error);
-		});
+		}
 
 		const chatModel = openRouter(model);
 
