@@ -15,24 +15,33 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import "highlight.js/styles/github-dark.css"; // or your preferred theme
 import { Flower, Paperclip, PauseCircle, Send } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
-export default function ChatPage({ chatId }: { chatId?: string }) {
-	const router = useRouter();
+export default function ChatPage({
+	chatId: initialChatId,
+}: {
+	chatId?: string;
+}) {
 	const [model, setModel] = useState("google/gemini-2.5-flash-lite");
 	const [input, setInput] = useState("");
+	const [chatId, setChatId] = useState(initialChatId);
+	const pendingChatIdRef = useRef<string | null>(null);
 
 	const modelRef = useRef(model);
 	useEffect(() => {
 		modelRef.current = model;
 	}, [model]);
 
+	const chatIdRef = useRef(chatId);
+	useEffect(() => {
+		chatIdRef.current = chatId;
+	}, [chatId]);
+
 	const { messages, sendMessage, setMessages, status, stop, error } = useChat({
-		// Use chatId as the unique identifier for this chat instance
+		// Use a stable id to prevent remounting during navigation
 		id: chatId ?? "new",
 		transport: new DefaultChatTransport({
 			api: "/api/chat",
@@ -41,17 +50,20 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 					body: {
 						messages,
 						model: modelRef.current,
-						chatId,
+						chatId: chatIdRef.current,
 						anonymousId: getAnonymousId(),
 					},
 				};
 			},
 			fetch: async (url, options) => {
 				const response = await fetch(url, options);
-				// When a new chat is created, redirect to the chat URL
+				// When a new chat is created, store the chatId but don't navigate yet
 				const newChatId = response.headers.get("X-Chat-Id");
-				if (newChatId && !chatId) {
-					router.replace(`/chat/${newChatId}`, { scroll: false });
+				if (newChatId && !chatIdRef.current) {
+					pendingChatIdRef.current = newChatId;
+					setChatId(newChatId);
+					// Update URL without navigation/remount using history API
+					window.history.replaceState(null, "", `/chat/${newChatId}`);
 				}
 				return response;
 			},
