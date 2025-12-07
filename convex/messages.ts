@@ -23,7 +23,7 @@ export const listByChat = query({
 				id: msg._id,
 				role: msg.role,
 				parts: [{ type: "text" as const, text: msg.content }],
-				createdAt: new Date(msg._creationTime),
+				createdAt: msg._creationTime,
 			}));
 	},
 });

@@ -15,27 +15,25 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import "highlight.js/styles/github-dark.css"; // or your preferred theme
 import { Flower, Paperclip, PauseCircle, Send } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 export default function ChatPage({ chatId }: { chatId?: string }) {
+	const router = useRouter();
 	const [model, setModel] = useState("google/gemini-2.5-flash-lite");
 	const [input, setInput] = useState("");
 
 	const modelRef = useRef(model);
-	const chatIdRef = useRef(chatId);
-
 	useEffect(() => {
 		modelRef.current = model;
 	}, [model]);
 
-	useEffect(() => {
-		chatIdRef.current = chatId;
-	}, [chatId]);
-
 	const { messages, sendMessage, setMessages, status, stop, error } = useChat({
+		// Use chatId as the unique identifier for this chat instance
+		id: chatId ?? "new",
 		transport: new DefaultChatTransport({
 			api: "/api/chat",
 			prepareSendMessagesRequest: async ({ messages }) => {
@@ -43,10 +41,19 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 					body: {
 						messages,
 						model: modelRef.current,
-						chatId: chatIdRef.current,
+						chatId,
 						anonymousId: getAnonymousId(),
 					},
 				};
+			},
+			fetch: async (url, options) => {
+				const response = await fetch(url, options);
+				// When a new chat is created, redirect to the chat URL
+				const newChatId = response.headers.get("X-Chat-Id");
+				if (newChatId && !chatId) {
+					router.replace(`/chat/${newChatId}`, { scroll: false });
+				}
+				return response;
 			},
 		}),
 		onError: (error) => {
@@ -78,7 +85,6 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 	};
 
 	useEffect(() => {
-		console.log("chatId", chatId);
 		if (messages.length === 0 && chatId) {
 			const anonymousId = getAnonymousId();
 			fetch(
@@ -89,8 +95,6 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 				.catch((error) => console.error("Failed to load messages:", error));
 		}
 	}, [chatId, messages.length, setMessages]);
-
-	console.log({ messages, status });
 
 	return (
 		<>

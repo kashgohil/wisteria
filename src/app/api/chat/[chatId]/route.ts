@@ -15,5 +15,11 @@ export async function GET(
 		anonymousId,
 	});
 
-	return NextResponse.json(messages);
+	// Convert createdAt timestamp to Date for useChat compatibility
+	const formattedMessages = messages.map((msg) => ({
+		...msg,
+		createdAt: new Date(msg.createdAt),
+	}));
+
+	return NextResponse.json(formattedMessages);
 }

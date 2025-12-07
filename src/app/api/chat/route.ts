@@ -39,13 +39,16 @@ export async function POST(req: Request) {
 
 		let chatId: Id<"chats"> | string = chatIdParam;
 
+		// Get the latest user message (last message in the array)
+		const latestUserMessage = messages[messages.length - 1];
+
 		if (!chatId) {
 			let title = "New Chat";
 			try {
 				const titleModel = openRouter(TITLE_GENERATION_MODEL);
 				const result = await generateText({
 					model: titleModel,
-					prompt: `Generate a name for the chat based on the following message: ${messages[0].content}. The name should be a single word or phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
+					prompt: `Generate a name for the chat based on the following message: ${latestUserMessage.content}. The name should be a single word or phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
 				});
 				title = result.text;
 			} catch (error) {
@@ -60,10 +63,10 @@ export async function POST(req: Request) {
 			console.log("New chat created:", chatId);
 		}
 
-		// Save user message
+		// Save only the latest user message (not all messages)
 		fetchMutation(api.messages.create, {
 			chatId: chatId as Id<"chats">,
-			content: messages[0].content,
+			content: latestUserMessage.content,
 			model,
 			role: "user",
 			anonymousId,
@@ -92,8 +95,15 @@ export async function POST(req: Request) {
 			},
 		});
 
-		// Return the stream with proper headers
-		return result.toUIMessageStreamResponse();
+		// Return the stream with the chatId in headers for new chats
+		const response = result.toUIMessageStreamResponse();
+
+		// Add chatId header so frontend can update URL for new chats
+		if (!chatIdParam && chatId) {
+			response.headers.set("X-Chat-Id", chatId as string);
+		}
+
+		return response;
 	} catch (error) {
 		console.error("Chat API Error:", error);
 		return new Response(
