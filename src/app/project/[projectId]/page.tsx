@@ -1,16 +1,26 @@
-import { getProjectChats, getUserProject } from "@/app/actions";
+"use client";
+
+import { api } from "@/../convex/_generated/api";
+import { Id } from "@/../convex/_generated/dataModel";
 import ChatPage from "@/app/chat/chatPage";
+import { useQuery } from "convex/react";
 import { MessageSquare } from "lucide-react";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 
-export default async function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
-	const { projectId } = await params;
-	const userProject = await getUserProject(projectId);
-	const chats = await getProjectChats(projectId);
+export default function ProjectPage() {
+	const params = useParams();
+	const projectId = params.projectId as Id<"projects">;
 
-	console.log(chats);
+	const userProject = useQuery(api.projects.get, { projectId });
+	const chats = useQuery(api.chats.listByProject, { projectId });
 
-	if (!userProject) {
+	if (userProject === undefined || chats === undefined) {
+		return (
+			<div className="flex items-center justify-center h-full">Loading...</div>
+		);
+	}
+
+	if (userProject === null) {
 		return notFound();
 	}
 
@@ -26,7 +36,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
 				<div className="flex flex-col gap-2 w-1/4">
 					{chats.map((chat) => (
 						<div
-							key={chat.id}
+							key={chat._id}
 							className="flex items-center justify-center gap-2 bg-accent/20 p-2 rounded-lg cursor-pointer"
 						>
 							<div className="flex items-center justify-center gap-2">

@@ -1,13 +1,19 @@
-import { getUserProjects, moveChat } from "@/app/actions";
-import { useQuery } from "@tanstack/react-query";
-import { Folder, Loader2 } from "lucide-react";
-import { DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "./ui/dropdown-menu";
+"use client";
 
-export function MoveChat({ chatId }: { chatId: string }) {
-	const { data: projects, isLoading } = useQuery({
-		queryKey: ["projects"],
-		queryFn: getUserProjects,
-	});
+import { api } from "@/../convex/_generated/api";
+import { Id } from "@/../convex/_generated/dataModel";
+import { useMutation, useQuery } from "convex/react";
+import { Folder, Loader2 } from "lucide-react";
+import {
+	DropdownMenuItem,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+} from "./ui/dropdown-menu";
+
+export function MoveChat({ chatId }: { chatId: Id<"chats"> }) {
+	const projects = useQuery(api.projects.list);
+	const moveChatMutation = useMutation(api.chats.move);
 
 	return (
 		<DropdownMenuSub>
@@ -21,16 +27,16 @@ export function MoveChat({ chatId }: { chatId: string }) {
 				</div>
 			</DropdownMenuSubTrigger>
 			<DropdownMenuSubContent>
-				{isLoading ? (
+				{projects === undefined ? (
 					<div className="flex items-center justify-center h-full">
 						<Loader2 className="animate-spin" />
 					</div>
 				) : (
 					projects?.map((project) => (
 						<DropdownMenuItem
-							key={project.id}
+							key={project._id}
 							onClick={() => {
-								moveChat(chatId, project.id);
+								moveChatMutation({ chatId, projectId: project._id });
 							}}
 						>
 							<span>{project.name}</span>

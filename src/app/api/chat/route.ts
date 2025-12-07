@@ -1,22 +1,15 @@
-import { db } from "@/db";
-import { chats as chatsTable, messages as messagesTable } from "@/db/schema";
+import { api } from "@/../convex/_generated/api";
+import { Id } from "@/../convex/_generated/dataModel";
 import { auth } from "@clerk/nextjs/server";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { convertToModelMessages, generateText, streamText } from "ai";
-import { nanoid } from "nanoid";
-import { revalidatePath } from "next/cache";
+import { fetchMutation } from "convex/nextjs";
 
 const openRouter = createOpenRouter({
 	apiKey: process.env.OPENROUTER_API_KEY!,
 });
 
 const TITLE_GENERATION_MODEL = "google/gemini-2.5-flash-lite";
-
-// Helper function to revalidate chat-related paths
-function revalidateChatPaths() {
-	revalidatePath("/");
-	revalidatePath("/chat");
-}
 
 export async function POST(req: Request) {
 	try {
@@ -34,11 +27,8 @@ export async function POST(req: Request) {
 			);
 		}
 
-		let { userId } = await auth();
-
-		if (!userId) {
-			userId = "anonymous";
-		}
+		const { userId: authUserId } = await auth();
+		const userId = authUserId ?? "anonymous";
 
 		console.log("Processing chat request:", {
 			model,
@@ -46,7 +36,7 @@ export async function POST(req: Request) {
 			userId,
 		});
 
-		let chatId = chatIdParam;
+		let chatId: Id<"chats"> | string = chatIdParam;
 
 		if (!chatId) {
 			let title = "New Chat";
@@ -61,36 +51,22 @@ export async function POST(req: Request) {
 				console.error("Title generation failed:", error);
 			}
 
-			const newChat = await db
-				.insert(chatsTable)
-				.values({
-					id: nanoid(10),
-					userId,
-					projectId,
-					name: title,
-				})
-				.returning({ id: chatsTable.id });
-
-			chatId = newChat[0].id;
-			console.log("New chat created:", newChat);
-			revalidateChatPaths();
+			chatId = await fetchMutation(api.chats.create, {
+				name: title,
+				projectId: projectId as Id<"projects"> | undefined,
+			});
+			console.log("New chat created:", chatId);
 		}
 
-		db.insert(messagesTable)
-			.values({
-				chatId,
-				userId,
-				id: nanoid(10),
-				role: "user",
-				content: messages[0].content,
-				model,
-			})
-			.then(() => {
-				revalidateChatPaths();
-			})
-			.catch((error) => {
-				console.error("Failed to save user message:", error);
-			});
+		// Save user message
+		fetchMutation(api.messages.create, {
+			chatId: chatId as Id<"chats">,
+			content: messages[0].content,
+			model,
+			role: "user",
+		}).catch((error) => {
+			console.error("Failed to save user message:", error);
+		});
 
 		const chatModel = openRouter(model);
 
@@ -98,21 +74,17 @@ export async function POST(req: Request) {
 			messages: convertToModelMessages(messages),
 			model: chatModel,
 			onFinish: async ({ text, usage, response }) => {
-				await db.insert(messagesTable).values({
-					chatId,
-					userId,
-					id: nanoid(10),
-					role: "assistant",
+				await fetchMutation(api.messages.create, {
+					chatId: chatId as Id<"chats">,
 					content: text,
 					model: model,
+					role: "assistant",
 					response: text,
 					responseTokens: usage?.outputTokens,
 					responseTime: response.timestamp
 						? Date.now() - response.timestamp.getTime()
 						: 0,
 				});
-
-				revalidateChatPaths();
 			},
 		});
 

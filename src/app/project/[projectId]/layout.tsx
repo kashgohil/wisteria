@@ -1,25 +1,15 @@
-import { getUserProject } from "@/app/actions";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
 import React from "react";
 
-export async function generateMetadata({ params }: { params: Promise<{ projectId: string }> }) {
-	const { projectId } = await params;
-	const project = await getUserProject(projectId);
-	if (!project) {
-		return {
-			title: "Wisteria - AI Chat",
-			description: "Project not found",
-		};
-	}
-	return {
-		title: `${project.name} - Wisteria`,
-		description: project.description,
-		openGraph: {
-			images: ["./wisteria.svg"],
-		},
-	};
-}
+export const metadata = {
+	title: "Project - Wisteria",
+	description: "Chat with AI like never before",
+};
 
 export default function ProjectLayout({
 	children,

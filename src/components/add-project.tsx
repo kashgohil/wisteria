@@ -1,10 +1,9 @@
 "use client";
 
-import { addProject } from "@/app/actions";
-import { projects } from "@/db/schema";
-import { InferSelectModel } from "drizzle-orm";
+import { api } from "@/../convex/_generated/api";
+import { useMutation } from "convex/react";
 import { Plus } from "lucide-react";
-import React, { useActionState } from "react";
+import React, { useState } from "react";
 
 import { Button } from "./ui/button";
 import {
@@ -22,41 +21,46 @@ import { toast } from "./ui/sonner";
 import { Textarea } from "./ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-type Project = InferSelectModel<typeof projects>;
-type State = {
-	error: string | { name?: string[]; description?: string[]; systemPrompt?: string[] } | null;
-	success: string | null;
-	data: Project | null;
-	input: { name: string; description: string; systemPrompt: string } | undefined;
-};
-
 export function AddProject() {
-	const [state, formAction, isPending] = useActionState<State, FormData>(addProject, {
-		error: null,
-		success: null,
-		data: null,
-		input: undefined,
-	});
+	const createProject = useMutation(api.projects.create);
+	const [isOpen, setIsOpen] = useState(false);
+	const [isPending, setIsPending] = useState(false);
 
-	const [isOpen, setIsOpen] = React.useState(false);
+	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+		e.preventDefault();
+		const formData = new FormData(e.currentTarget);
+		const name = formData.get("name") as string;
+		const description = formData.get("description") as string;
+		const systemPrompt = formData.get("system-prompt") as string;
 
-	React.useEffect(() => {
-		if (state.success) {
+		if (!name || !description || !systemPrompt) {
+			toast({
+				title: "Missing fields",
+				description: "Please fill in all fields.",
+				type: "error",
+			});
+			return;
+		}
+
+		setIsPending(true);
+		try {
+			await createProject({ name, description, systemPrompt });
 			toast({
 				title: "Project created successfully",
 				description: "You can now start chatting with your project.",
 				type: "success",
 			});
 			setIsOpen(false);
-		}
-		if (state.error) {
+		} catch {
 			toast({
 				title: "Failed to create project",
 				description: "Please try again.",
 				type: "error",
 			});
+		} finally {
+			setIsPending(false);
 		}
-	}, [state.success, state.error]);
+	};
 
 	return (
 		<>
@@ -83,12 +87,14 @@ export function AddProject() {
 
 				<DialogContent>
 					<form
-						action={formAction}
+						onSubmit={handleSubmit}
 						className="flex flex-col gap-4"
 					>
 						<DialogHeader>
 							<DialogTitle>Add Project</DialogTitle>
-							<DialogDescription>Add a new project to your workspace</DialogDescription>
+							<DialogDescription>
+								Add a new project to your workspace
+							</DialogDescription>
 						</DialogHeader>
 						<div className="grid gap-4">
 							<div className="grid gap-3">
@@ -98,7 +104,6 @@ export function AddProject() {
 									name="name"
 									placeholder="Project Name"
 									required
-									defaultValue={state.input?.name}
 								/>
 							</div>
 							<div className="grid gap-3">
@@ -108,7 +113,6 @@ export function AddProject() {
 									name="description"
 									placeholder="This is a description of the project."
 									required
-									defaultValue={state.input?.description}
 								/>
 							</div>
 							<div className="grid gap-3">
@@ -119,7 +123,6 @@ export function AddProject() {
 									placeholder="You are a helpful assistant."
 									className="!min-h-[100px]"
 									required
-									defaultValue={state.input?.systemPrompt}
 								/>
 							</div>
 						</div>

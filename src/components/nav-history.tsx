@@ -1,13 +1,28 @@
-import { getUserChats } from "@/app/actions";
-import { SidebarGroup, SidebarGroupLabel, SidebarMenu } from "@/components/ui/sidebar";
+"use client";
+
+import { api } from "@/../convex/_generated/api";
+import {
+	SidebarGroup,
+	SidebarGroupLabel,
+	SidebarMenu,
+} from "@/components/ui/sidebar";
+import { useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { ChatList } from "./ui/chat-list";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-async function History() {
-	const userChats = await getUserChats();
+function History() {
+	const userChats = useQuery(api.chats.list);
+
+	if (userChats === undefined) {
+		return (
+			<div className="flex p-2 text-sm items-center justify-center h-full">
+				Loading...
+			</div>
+		);
+	}
 
 	return (
 		<SidebarMenu>
@@ -16,7 +31,7 @@ async function History() {
 	);
 }
 
-export async function NavHistory() {
+export function NavHistory() {
 	return (
 		<SidebarGroup className="group-data-[collapsible=icon]:hidden">
 			<SidebarGroupLabel className="text-wisteria-500 flex items-center gap-2 justify-between">

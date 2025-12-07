@@ -1,4 +1,4 @@
-import { ClerkProvider } from "@clerk/nextjs";
+import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
@@ -25,25 +25,17 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<ClerkProvider
-			appearance={{
-				variables: {
-					colorPrimary: "#a3a0f3",
-					colorTextOnPrimaryBackground: "#000",
-					colorInputText: "#ffffff",
-				},
-			}}
-		>
-			<html lang="en">
-				<body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black-300 text-white-400`}>
-					{children}
-					<Toaster
-						position="top-right"
-						richColors
-						visibleToasts={3}
-					/>
-				</body>
-			</html>
-		</ClerkProvider>
+		<html lang="en">
+			<body
+				className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black-300 text-white-400`}
+			>
+				<ConvexClientProvider>{children}</ConvexClientProvider>
+				<Toaster
+					position="top-right"
+					richColors
+					visibleToasts={3}
+				/>
+			</body>
+		</html>
 	);
 }

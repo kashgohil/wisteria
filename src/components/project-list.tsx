@@ -1,53 +1,42 @@
 "use client";
 
-import { deleteProject } from "@/app/actions";
-import { projects } from "@/db/schema";
+import { api } from "@/../convex/_generated/api";
+import { Doc, Id } from "@/../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { InferSelectModel } from "drizzle-orm";
+import { useMutation } from "convex/react";
 import { Edit, Folder } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useOptimistic, useTransition } from "react";
+import { useCallback } from "react";
 import { DeleteProjectButton } from "./delete-project";
 import { Button } from "./ui/button";
 import { SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
 
-export function ProjectList(props: { projects: InferSelectModel<typeof projects>[] }) {
+export function ProjectList(props: { projects: Doc<"projects">[] }) {
 	const { projects } = props;
 	const params = useParams();
 	const projectId = params.projectId as string;
-
-	const [, startTransition] = useTransition();
-
-	const [optimisticProjects, deleteProjectAction] = useOptimistic(
-		projects,
-		(state, { projectId }: { projectId: string }) => {
-			return state.filter((project) => project.id !== projectId);
-		}
-	);
+	const deleteProjectMutation = useMutation(api.projects.remove);
 
 	const removeProject = useCallback(
-		(projectId: string) => {
-			startTransition(() => {
-				deleteProjectAction({ projectId });
-				deleteProject(projectId);
-			});
+		(projectId: Id<"projects">) => {
+			deleteProjectMutation({ projectId });
 		},
-		[deleteProjectAction]
+		[deleteProjectMutation],
 	);
 
-	return optimisticProjects.map((item) => (
-		<SidebarMenuItem key={item.id}>
+	return projects.map((item) => (
+		<SidebarMenuItem key={item._id}>
 			<SidebarMenuButton
 				asChild
 				className={cn(
 					"group/menu-item [&_svg]:text-accent hover:[&_svg]:text-accent-foreground",
-					projectId === item.id && "bg-accent/20"
+					projectId === item._id && "bg-accent/20",
 				)}
 			>
 				<div className="w-full flex items-center justify-between relative">
 					<Link
-						href={`/project/${item.id}`}
+						href={`/project/${item._id}`}
 						className="w-full"
 					>
 						<div className="flex items-center justify-between gap-2">
@@ -71,7 +60,7 @@ export function ProjectList(props: { projects: InferSelectModel<typeof projects>
 						</Button>
 
 						<DeleteProjectButton
-							projectId={item.id}
+							projectId={item._id}
 							onDelete={removeProject}
 						/>
 					</div>

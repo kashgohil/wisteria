@@ -1,5 +1,6 @@
 "use client";
 
+import { Id } from "@/../convex/_generated/dataModel";
 import { Trash2 } from "lucide-react";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { Button } from "./ui/button";
@@ -8,8 +9,8 @@ export function DeleteProjectButton({
 	projectId,
 	onDelete,
 }: {
-	projectId: string;
-	onDelete: (projectId: string) => void;
+	projectId: Id<"projects">;
+	onDelete: (projectId: Id<"projects">) => void;
 }) {
 	return (
 		<ConfirmationDialog
