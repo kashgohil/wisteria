@@ -195,3 +195,136 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* Chat message prose improvements */
+.prose {
+	--tw-prose-body: var(--foreground);
+	--tw-prose-headings: var(--color-wisteria-300);
+	--tw-prose-links: var(--color-wisteria-400);
+	--tw-prose-bold: var(--foreground);
+	--tw-prose-counters: var(--color-wisteria-400);
+	--tw-prose-bullets: var(--color-wisteria-400);
+	--tw-prose-hr: var(--border);
+	--tw-prose-quotes: var(--foreground);
+	--tw-prose-quote-borders: var(--color-wisteria-500);
+	--tw-prose-code: var(--color-wisteria-300);
+	--tw-prose-pre-code: var(--foreground);
+	--tw-prose-pre-bg: var(--color-black-600);
+	--tw-prose-th-borders: var(--border);
+	--tw-prose-td-borders: var(--border);
+	line-height: 1.8;
+}
+
+.prose p {
+	margin-top: 1.25em;
+	margin-bottom: 1.25em;
+	line-height: 1.85;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+	color: var(--color-wisteria-300);
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.prose h1 {
+	font-size: 1.875em;
+	width: fit-content;
+	border-bottom: 2px solid var(--color-wisteria-500);
+	margin-bottom: 0.5em;
+}
+
+.prose h2 {
+	font-size: 1.5em;
+	width: fit-content;
+	border-bottom: 2px solid var(--color-wisteria-500);
+	margin-bottom: 0.35em;
+}
+
+.prose h3 {
+	font-size: 1.25em;
+}
+
+.prose h4 {
+	font-size: 1.125em;
+}
+
+.prose pre {
+	background-color: var(--color-black-600) !important;
+	border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.prose pre code {
+	font-size: 0.875rem;
+	line-height: 1.7;
+}
+
+.prose ul,
+.prose ol {
+	padding-left: 1.75rem;
+	margin-top: 1.25em;
+	margin-bottom: 1.25em;
+}
+
+.prose ul {
+	list-style-type: disc;
+}
+
+.prose ol {
+	list-style-type: decimal;
+}
+
+.prose li {
+	margin-top: 0.625em;
+	margin-bottom: 0.625em;
+	padding-left: 0.5em;
+	line-height: 1.75;
+}
+
+.prose li::marker {
+	color: var(--color-wisteria-400);
+}
+
+.prose ul > li::marker {
+	font-size: 1.1em;
+}
+
+.prose strong {
+	color: var(--color-wisteria-200);
+}
+
+.prose ul ul,
+.prose ol ol,
+.prose ul ol,
+.prose ol ul {
+	margin-top: 0.75em;
+	margin-bottom: 0.75em;
+}
+
+.prose table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 1rem 0;
+}
+
+.prose th,
+.prose td {
+	border: 1px solid var(--border);
+	padding: 0.5rem 0.75rem;
+	text-align: left;
+}
+
+.prose th {
+	background-color: var(--color-black-400);
+	font-weight: 600;
+}
+
+.prose hr {
+	border-color: var(--border);
+	margin: 1.5rem 0;
+}
