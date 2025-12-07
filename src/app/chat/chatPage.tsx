@@ -10,6 +10,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getAnonymousId } from "@/hooks/use-anonymous-id";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import "highlight.js/styles/github-dark.css"; // or your preferred theme
@@ -43,6 +44,7 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 						messages,
 						model: modelRef.current,
 						chatId: chatIdRef.current,
+						anonymousId: getAnonymousId(),
 					},
 				};
 			},
@@ -78,7 +80,10 @@ export default function ChatPage({ chatId }: { chatId?: string }) {
 	useEffect(() => {
 		console.log("chatId", chatId);
 		if (messages.length === 0 && chatId) {
-			fetch(`/api/chat/${chatId}`)
+			const anonymousId = getAnonymousId();
+			fetch(
+				`/api/chat/${chatId}?anonymousId=${encodeURIComponent(anonymousId)}`,
+			)
 				.then((res) => res.json())
 				.then((data) => setMessages(data))
 				.catch((error) => console.error("Failed to load messages:", error));

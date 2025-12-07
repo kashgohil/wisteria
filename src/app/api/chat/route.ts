@@ -18,6 +18,7 @@ export async function POST(req: Request) {
 			model,
 			chatId: chatIdParam,
 			projectId,
+			anonymousId,
 		} = await req.json();
 
 		if (!messages || !model) {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 		}
 
 		const { userId: authUserId } = await auth();
-		const userId = authUserId ?? "anonymous";
+		const userId = authUserId ?? anonymousId ?? "anonymous";
 
 		console.log("Processing chat request:", {
 			model,
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
 			chatId = await fetchMutation(api.chats.create, {
 				name: title,
 				projectId: projectId as Id<"projects"> | undefined,
+				anonymousId,
 			});
 			console.log("New chat created:", chatId);
 		}
@@ -64,6 +66,7 @@ export async function POST(req: Request) {
 			content: messages[0].content,
 			model,
 			role: "user",
+			anonymousId,
 		}).catch((error) => {
 			console.error("Failed to save user message:", error);
 		});
@@ -84,6 +87,7 @@ export async function POST(req: Request) {
 					responseTime: response.timestamp
 						? Date.now() - response.timestamp.getTime()
 						: 0,
+					anonymousId,
 				});
 			},
 		});

@@ -1,9 +1,18 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
-import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from "lucide-react";
+import { SignInButton, useUser } from "@clerk/nextjs";
+import {
+	BadgeCheck,
+	Bell,
+	ChevronsUpDown,
+	CreditCard,
+	LogIn,
+	LogOut,
+	Sparkles,
+} from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -13,13 +22,35 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
+} from "@/components/ui/sidebar";
 
 export function NavUser() {
-	const { user } = useUser();
+	const { user, isLoaded } = useUser();
+
+	if (!isLoaded) {
+		return null;
+	}
 
 	if (!user) {
-		return null;
+		return (
+			<SidebarMenu>
+				<SidebarMenuItem>
+					<SignInButton mode="modal">
+						<Button
+							variant="outline"
+							className="w-full justify-start gap-2 border-wisteria-500/30 hover:bg-wisteria-500/10 hover:text-wisteria-500"
+						>
+							<LogIn className="h-4 w-4" />
+							Sign in
+						</Button>
+					</SignInButton>
+				</SidebarMenuItem>
+			</SidebarMenu>
+		);
 	}
 
 	return (
@@ -67,7 +98,9 @@ export function NavUser() {
 								</Avatar>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">{user.fullName}</span>
-									<span className="truncate text-xs">{user.primaryEmailAddress?.emailAddress}</span>
+									<span className="truncate text-xs">
+										{user.primaryEmailAddress?.emailAddress}
+									</span>
 								</div>
 							</div>
 						</DropdownMenuLabel>

@@ -2,13 +2,14 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const list = query({
-	args: {},
-	handler: async (ctx) => {
+	args: { anonymousId: v.optional(v.string()) },
+	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
+		const userId = identity?.subject ?? args.anonymousId;
+
+		if (!userId) {
 			return [];
 		}
-		const userId = identity.subject;
 
 		// Get chats without a project (standalone chats)
 		return await ctx.db
@@ -42,10 +43,11 @@ export const create = mutation({
 	args: {
 		name: v.string(),
 		projectId: v.optional(v.id("projects")),
+		anonymousId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
-		const userId = identity?.subject ?? "anonymous";
+		const userId = identity?.subject ?? args.anonymousId ?? "anonymous";
 
 		const chatId = await ctx.db.insert("chats", {
 			userId,
