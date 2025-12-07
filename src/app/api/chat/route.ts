@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 				const titleModel = openRouter(TITLE_GENERATION_MODEL);
 				const result = await generateText({
 					model: titleModel,
-					prompt: `Generate a name for the chat based on the following message: ${userMessageContent}. The name should be a single word or phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
+					prompt: `Generate a name for the chat based on the following message: ${userMessageContent}. The name should be a single phrase that captures the essence of the chat. Only return the name, no other text. provide proper spacing.`,
 				});
 				title = result.text;
 			} catch (error) {
