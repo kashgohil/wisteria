@@ -31,6 +31,7 @@ interface ChatContextType {
 		initialMessages?: UIMessage[],
 	) => void;
 	projectId: string | undefined;
+	isLoadingMessages: boolean;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -58,6 +59,7 @@ export function ChatProvider({
 	const [input, setInput] = useState("");
 	const [chatId, setChatIdState] = useState<string | undefined>(initialChatId);
 	const [isInitialized, setIsInitialized] = useState(false);
+	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
 	const modelRef = useRef(model);
 	useEffect(() => {
@@ -136,8 +138,10 @@ export function ChatProvider({
 			if (newInitialMessages && newInitialMessages.length > 0) {
 				setMessages(newInitialMessages);
 				loadedChatIdRef.current = newChatId;
+				setIsLoadingMessages(false);
 			} else if (newChatId && loadedChatIdRef.current !== newChatId) {
 				// Need to fetch messages for this chat
+				setIsLoadingMessages(true);
 				const anonymousId = getAnonymousId();
 				fetch(
 					`/api/chat/${newChatId}?anonymousId=${encodeURIComponent(anonymousId)}`,
@@ -146,12 +150,17 @@ export function ChatProvider({
 					.then((data) => {
 						setMessages(data);
 						loadedChatIdRef.current = newChatId;
+						setIsLoadingMessages(false);
 					})
-					.catch((error) => console.error("Failed to load messages:", error));
+					.catch((error) => {
+						console.error("Failed to load messages:", error);
+						setIsLoadingMessages(false);
+					});
 			} else if (!newChatId) {
 				// New chat - clear messages
 				setMessages([]);
 				loadedChatIdRef.current = undefined;
+				setIsLoadingMessages(false);
 			}
 			setIsInitialized(true);
 		},
@@ -192,6 +201,7 @@ export function ChatProvider({
 				setChatId,
 				initializeChat,
 				projectId,
+				isLoadingMessages,
 			}}
 		>
 			{children}

@@ -10,7 +10,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useCallback, useState } from "react";
 import { ConfirmationDialog } from "../confirmation-dialog";
 import { MoveChat } from "../move-chat";
-import { useChatContext } from "../providers/chat-provider";
 import { Button } from "./button";
 import {
 	DropdownMenu,
@@ -24,7 +23,6 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 	const { chats } = props;
 	const pathname = usePathname();
 	const router = useRouter();
-	const { initializeChat } = useChatContext();
 	// Extract chatId from pathname (e.g., /chat/abc123 -> abc123)
 	const currentChatId = pathname.startsWith("/chat/")
 		? pathname.split("/")[2]
@@ -66,9 +64,9 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 									type="button"
 									className="w-full text-left"
 									onClick={() => {
-										// Initialize chat first, then navigate
-										initializeChat(item._id);
+										// Navigate immediately for instant URL update
 										router.push(`/chat/${item._id}`);
+										// Chat initialization happens via useEffect in ChatPage
 									}}
 								>
 									<div className="flex items-center justify-between gap-2">
