@@ -3,7 +3,7 @@ import { Id } from "@/../convex/_generated/dataModel";
 import { auth } from "@clerk/nextjs/server";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { convertToModelMessages, generateText, streamText } from "ai";
-import { fetchMutation } from "convex/nextjs";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 
 async function getConvexToken() {
 	const authResult = await auth();
@@ -97,9 +97,27 @@ export async function POST(req: Request) {
 
 		const chatModel = openRouter(model);
 
+		// Fetch project system prompt if projectId is provided
+		let systemPrompt: string | undefined;
+		if (projectId) {
+			try {
+				const prompt = await fetchQuery(
+					api.projects.getSystemPrompt,
+					{ projectId: projectId as Id<"projects"> },
+					{ token },
+				);
+				if (prompt) {
+					systemPrompt = prompt;
+				}
+			} catch (error) {
+				console.error("Failed to fetch project system prompt:", error);
+			}
+		}
+
 		const result = streamText({
 			messages: convertToModelMessages(messages),
 			model: chatModel,
+			system: systemPrompt,
 			onFinish: async ({ text, usage, response }) => {
 				await fetchMutation(
 					api.messages.create,

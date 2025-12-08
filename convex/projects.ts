@@ -35,6 +35,23 @@ export const get = query({
 	},
 });
 
+export const getSystemPrompt = query({
+	args: { projectId: v.id("projects") },
+	handler: async (ctx, args) => {
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) {
+			return null;
+		}
+		const userId = identity.subject;
+
+		const project = await ctx.db.get(args.projectId);
+		if (!project || project.userId !== userId) {
+			return null;
+		}
+		return project.systemPrompt ?? null;
+	},
+});
+
 export const create = mutation({
 	args: {
 		name: v.string(),

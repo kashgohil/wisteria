@@ -7,14 +7,18 @@ import {
 } from "@/components/ui/sidebar";
 import React from "react";
 
-export default function ProjectLayout({
+export default async function ProjectLayout({
 	children,
+	params,
 }: Readonly<{
 	children: React.ReactNode;
+	params: Promise<{ projectId: string }>;
 }>) {
+	const { projectId } = await params;
+
 	return (
 		<SidebarProvider>
-			<ChatProvider>
+			<ChatProvider projectId={projectId}>
 				<AppSidebar projects />
 				<SidebarInset className="flex flex-col p-4">
 					<SidebarTrigger className="-ml-1 absolute top-4 left-4" />

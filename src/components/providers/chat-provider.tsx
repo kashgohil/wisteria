@@ -30,6 +30,7 @@ interface ChatContextType {
 		chatId: string | undefined,
 		initialMessages?: UIMessage[],
 	) => void;
+	projectId: string | undefined;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -46,10 +47,12 @@ export function ChatProvider({
 	children,
 	initialChatId,
 	initialMessages = [],
+	projectId,
 }: {
 	children: ReactNode;
 	initialChatId?: string;
 	initialMessages?: UIMessage[];
+	projectId?: string;
 }) {
 	const [model, setModel] = useState("google/gemini-2.5-flash-lite");
 	const [input, setInput] = useState("");
@@ -66,6 +69,11 @@ export function ChatProvider({
 		chatIdRef.current = chatId;
 	}, [chatId]);
 
+	const projectIdRef = useRef(projectId);
+	useEffect(() => {
+		projectIdRef.current = projectId;
+	}, [projectId]);
+
 	// Track which chatId we've loaded messages for
 	const loadedChatIdRef = useRef<string | undefined>(undefined);
 
@@ -80,6 +88,7 @@ export function ChatProvider({
 						messages,
 						model: modelRef.current,
 						chatId: chatIdRef.current,
+						projectId: projectIdRef.current,
 						anonymousId: getAnonymousId(),
 					},
 				};
@@ -93,7 +102,10 @@ export function ChatProvider({
 					chatIdRef.current = newChatId;
 					loadedChatIdRef.current = newChatId;
 					// Update URL without navigation/remount using history API
-					window.history.replaceState(null, "", `/chat/${newChatId}`);
+					const basePath = projectIdRef.current
+						? `/project/${projectIdRef.current}/chat`
+						: "/chat";
+					window.history.replaceState(null, "", `${basePath}/${newChatId}`);
 				}
 				return response;
 			},
@@ -179,6 +191,7 @@ export function ChatProvider({
 				chatId,
 				setChatId,
 				initializeChat,
+				projectId,
 			}}
 		>
 			{children}
