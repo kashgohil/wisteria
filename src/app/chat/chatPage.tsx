@@ -38,11 +38,10 @@ export default function ChatPage({
 	} = useChatContext();
 
 	// Initialize/switch chat when chatId changes
-	// Skip if the context already has the correct chatId (e.g., after URL update via history.replaceState)
+	// Only re-initialize if the initialChatId from the URL differs from the current chatId
 	useEffect(() => {
-		// If initialChatId is undefined but we already have a chatId in context (new chat was created),
-		// don't reset the chat
-		if (initialChatId === undefined && chatId !== undefined) {
+		// Skip if we're already on the correct chat (e.g., after URL update via history.replaceState)
+		if (initialChatId === chatId) {
 			return;
 		}
 		initializeChat(initialChatId);

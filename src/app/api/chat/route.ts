@@ -5,6 +5,11 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { convertToModelMessages, generateText, streamText } from "ai";
 import { fetchMutation } from "convex/nextjs";
 
+async function getConvexToken() {
+	const authResult = await auth();
+	return (await authResult.getToken({ template: "convex" })) ?? undefined;
+}
+
 const openRouter = createOpenRouter({
 	apiKey: process.env.OPENROUTER_API_KEY!,
 });
@@ -28,13 +33,12 @@ export async function POST(req: Request) {
 			);
 		}
 
-		const { userId: authUserId } = await auth();
-		const userId = authUserId ?? anonymousId ?? "anonymous";
+		const token = await getConvexToken();
 
 		console.log("Processing chat request:", {
 			model,
 			messageCount: messages.length,
-			userId,
+			authenticated: !!token,
 		});
 
 		let chatId: Id<"chats"> | string = chatIdParam;
@@ -62,23 +66,31 @@ export async function POST(req: Request) {
 				console.error("Title generation failed:", error);
 			}
 
-			chatId = await fetchMutation(api.chats.create, {
-				name: title,
-				projectId: projectId as Id<"projects"> | undefined,
-				anonymousId,
-			});
+			chatId = await fetchMutation(
+				api.chats.create,
+				{
+					name: title,
+					projectId: projectId as Id<"projects"> | undefined,
+					anonymousId,
+				},
+				{ token },
+			);
 			console.log("New chat created:", chatId);
 		}
 
 		// Save the user message (await to ensure it's saved before proceeding)
 		try {
-			await fetchMutation(api.messages.create, {
-				chatId: chatId as Id<"chats">,
-				content: userMessageContent,
-				model,
-				role: "user",
-				anonymousId,
-			});
+			await fetchMutation(
+				api.messages.create,
+				{
+					chatId: chatId as Id<"chats">,
+					content: userMessageContent,
+					model,
+					role: "user",
+					anonymousId,
+				},
+				{ token },
+			);
 		} catch (error) {
 			console.error("Failed to save user message:", error);
 		}
@@ -89,18 +101,22 @@ export async function POST(req: Request) {
 			messages: convertToModelMessages(messages),
 			model: chatModel,
 			onFinish: async ({ text, usage, response }) => {
-				await fetchMutation(api.messages.create, {
-					chatId: chatId as Id<"chats">,
-					content: text,
-					model: model,
-					role: "assistant",
-					response: text,
-					responseTokens: usage?.outputTokens,
-					responseTime: response.timestamp
-						? Date.now() - response.timestamp.getTime()
-						: 0,
-					anonymousId,
-				});
+				await fetchMutation(
+					api.messages.create,
+					{
+						chatId: chatId as Id<"chats">,
+						content: text,
+						model: model,
+						role: "assistant",
+						response: text,
+						responseTokens: usage?.outputTokens,
+						responseTime: response.timestamp
+							? Date.now() - response.timestamp.getTime()
+							: 0,
+						anonymousId,
+					},
+					{ token },
+				);
 			},
 		});
 
