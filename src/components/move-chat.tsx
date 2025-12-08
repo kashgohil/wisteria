@@ -15,6 +15,8 @@ export function MoveChat({ chatId }: { chatId: Id<"chats"> }) {
 	const projects = useQuery(api.projects.list);
 	const moveChatMutation = useMutation(api.chats.move);
 
+	if (!projects?.length) return null;
+
 	return (
 		<DropdownMenuSub>
 			<DropdownMenuSubTrigger className="group/item">

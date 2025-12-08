@@ -10,7 +10,6 @@ import { useUserId } from "@/hooks/use-user-id";
 import { useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useChatContext } from "./providers/chat-provider";
 import { Button } from "./ui/button";
 import { ChatList } from "./ui/chat-list";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -38,10 +37,8 @@ function History() {
 
 export function NavHistory() {
 	const router = useRouter();
-	const { initializeChat } = useChatContext();
 
 	const handleNewChat = () => {
-		initializeChat(undefined);
 		router.push("/chat");
 	};
 

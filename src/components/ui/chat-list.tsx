@@ -6,11 +6,10 @@ import { useUserId } from "@/hooks/use-user-id";
 import { cn } from "@/lib/utils";
 import { useMutation } from "convex/react";
 import { Edit, MoreVertical, Trash2 } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Fragment, useCallback, useState } from "react";
 import { ConfirmationDialog } from "../confirmation-dialog";
 import { MoveChat } from "../move-chat";
-import { Button } from "./button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -21,12 +20,8 @@ import { SidebarMenuButton, SidebarMenuItem } from "./sidebar";
 
 export function ChatList(props: { chats: Doc<"chats">[] }) {
 	const { chats } = props;
-	const pathname = usePathname();
+	const { chatId: currentChatId } = useParams();
 	const router = useRouter();
-	// Extract chatId from pathname (e.g., /chat/abc123 -> abc123)
-	const currentChatId = pathname.startsWith("/chat/")
-		? pathname.split("/")[2]
-		: null;
 	const userId = useUserId();
 	const deleteChatMutation = useMutation(api.chats.remove);
 
@@ -55,7 +50,7 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 						<SidebarMenuButton
 							asChild
 							className={cn(
-								"group/menu-item [&_svg]:text-accent hover:[&_svg]:text-accent-foreground",
+								"group/menu-item",
 								currentChatId === item._id && "bg-accent/20",
 							)}
 						>
@@ -75,16 +70,12 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 								</button>
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="!p-1 group-hover/menu-item:visible invisible"
-										>
+										<button>
 											<MoreVertical
-												size={8}
-												className="text-wisteria-500 group-hover/menu-item:text-accent-foreground"
+												size={12}
+												className="text-wisteria-500"
 											/>
-										</Button>
+										</button>
 									</DropdownMenuTrigger>
 									<DropdownMenuContent
 										side="right"
@@ -101,6 +92,7 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 										</DropdownMenuItem>
 										<DropdownMenuItem
 											className="group/item"
+											variant="destructive"
 											onClick={() => {
 												setChatToDelete(item._id);
 											}}
