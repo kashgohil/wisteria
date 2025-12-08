@@ -4,7 +4,7 @@ import { useChatMessages } from "@/hooks/use-chat-messages";
 import { useUserId } from "@/hooks/use-user-id";
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
 	createContext,
 	useCallback,
@@ -66,7 +66,7 @@ export function ChatProvider({
 	const router = useRouter();
 	const pathname = usePathname();
 	const pathnameRef = useRef(pathname);
-	
+
 	// Keep pathname ref in sync
 	useEffect(() => {
 		pathnameRef.current = pathname;
@@ -93,7 +93,7 @@ export function ChatProvider({
 
 	// Track which chatId we've loaded messages for
 	const loadedChatIdRef = useRef<string | undefined>(undefined);
-	
+
 	// Cache messages by chatId for instant display when navigating back
 	const messagesCacheRef = useRef<Map<string, UIMessage[]>>(new Map());
 
@@ -248,7 +248,7 @@ export function ChatProvider({
 			// We have fresh data from Convex, use it
 			return cachedMessages;
 		}
-		
+
 		// If loading and we have cached messages, show cached version
 		if (isLoadingMessages && chatId) {
 			const cached = messagesCacheRef.current.get(chatId);
@@ -256,7 +256,7 @@ export function ChatProvider({
 				return cached;
 			}
 		}
-		
+
 		// Fall back to useChat messages (for streaming)
 		return messages;
 	}, [cachedMessages, chatId, isLoadingMessages, messages]);
