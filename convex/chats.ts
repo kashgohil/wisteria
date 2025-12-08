@@ -49,7 +49,7 @@ export const create = mutation({
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		// Prioritize authenticated user ID over passed userId
-		const userId = identity?.subject ?? args.userId ?? "anonymous";
+		const userId = identity?.subject || args.userId || "anonymous";
 
 		const chatId = await ctx.db.insert("chats", {
 			userId,
