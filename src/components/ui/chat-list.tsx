@@ -6,11 +6,11 @@ import { useAnonymousId } from "@/hooks/use-anonymous-id";
 import { cn } from "@/lib/utils";
 import { useMutation } from "convex/react";
 import { Edit, MoreVertical, Trash2 } from "lucide-react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useCallback, useState } from "react";
 import { ConfirmationDialog } from "../confirmation-dialog";
 import { MoveChat } from "../move-chat";
+import { useChatContext } from "../providers/chat-provider";
 import { Button } from "./button";
 import {
 	DropdownMenu,
@@ -22,8 +22,13 @@ import { SidebarMenuButton, SidebarMenuItem } from "./sidebar";
 
 export function ChatList(props: { chats: Doc<"chats">[] }) {
 	const { chats } = props;
-	const searchParams = useSearchParams();
-	const chatId = searchParams.get("id");
+	const pathname = usePathname();
+	const router = useRouter();
+	const { initializeChat } = useChatContext();
+	// Extract chatId from pathname (e.g., /chat/abc123 -> abc123)
+	const currentChatId = pathname.startsWith("/chat/")
+		? pathname.split("/")[2]
+		: null;
 	const anonymousId = useAnonymousId();
 	const deleteChatMutation = useMutation(api.chats.remove);
 
@@ -53,18 +58,23 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 							asChild
 							className={cn(
 								"group/menu-item [&_svg]:text-accent hover:[&_svg]:text-accent-foreground",
-								chatId === item._id && "bg-accent/20",
+								currentChatId === item._id && "bg-accent/20",
 							)}
 						>
 							<div className="w-full flex items-center justify-between relative">
-								<Link
-									href={`/chat/${item._id}`}
-									className="w-full"
+								<button
+									type="button"
+									className="w-full text-left"
+									onClick={() => {
+										// Initialize chat first, then navigate
+										initializeChat(item._id);
+										router.push(`/chat/${item._id}`);
+									}}
 								>
 									<div className="flex items-center justify-between gap-2">
 										<span className="truncate">{item.name}</span>
 									</div>
-								</Link>
+								</button>
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
 										<Button

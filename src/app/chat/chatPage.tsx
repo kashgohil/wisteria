@@ -3,6 +3,7 @@
 import { ThinkingBlock } from "@/components/chat/thinking-block";
 import { ModeSelector } from "@/components/mode-selector";
 import { ModelSelector } from "@/components/model-selector";
+import { useChatContext } from "@/components/providers/chat-provider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -10,12 +11,9 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getAnonymousId } from "@/hooks/use-anonymous-id";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import "highlight.js/styles/github-dark.css"; // or your preferred theme
 import { Flower, Paperclip, PauseCircle, Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -25,53 +23,30 @@ export default function ChatPage({
 }: {
 	chatId?: string;
 }) {
-	const [model, setModel] = useState("google/gemini-2.5-flash-lite");
-	const [input, setInput] = useState("");
-	const [chatId, setChatId] = useState(initialChatId);
-	const pendingChatIdRef = useRef<string | null>(null);
+	const {
+		messages,
+		sendMessage,
+		status,
+		stop,
+		error,
+		input,
+		setInput,
+		model,
+		setModel,
+		chatId,
+		initializeChat,
+	} = useChatContext();
 
-	const modelRef = useRef(model);
+	// Initialize/switch chat when chatId changes
+	// Skip if the context already has the correct chatId (e.g., after URL update via history.replaceState)
 	useEffect(() => {
-		modelRef.current = model;
-	}, [model]);
-
-	const chatIdRef = useRef(chatId);
-	useEffect(() => {
-		chatIdRef.current = chatId;
-	}, [chatId]);
-
-	const { messages, sendMessage, setMessages, status, stop, error } = useChat({
-		// Use a stable id to prevent remounting during navigation
-		id: chatId ?? "new",
-		transport: new DefaultChatTransport({
-			api: "/api/chat",
-			prepareSendMessagesRequest: async ({ messages }) => {
-				return {
-					body: {
-						messages,
-						model: modelRef.current,
-						chatId: chatIdRef.current,
-						anonymousId: getAnonymousId(),
-					},
-				};
-			},
-			fetch: async (url, options) => {
-				const response = await fetch(url, options);
-				// When a new chat is created, store the chatId but don't navigate yet
-				const newChatId = response.headers.get("X-Chat-Id");
-				if (newChatId && !chatIdRef.current) {
-					pendingChatIdRef.current = newChatId;
-					setChatId(newChatId);
-					// Update URL without navigation/remount using history API
-					window.history.replaceState(null, "", `/chat/${newChatId}`);
-				}
-				return response;
-			},
-		}),
-		onError: (error) => {
-			console.error("Chat error:", error);
-		},
-	});
+		// If initialChatId is undefined but we already have a chatId in context (new chat was created),
+		// don't reset the chat
+		if (initialChatId === undefined && chatId !== undefined) {
+			return;
+		}
+		initializeChat(initialChatId);
+	}, [initialChatId, chatId, initializeChat]);
 
 	const submitMessage = () => {
 		if (input.trim()) {
@@ -95,18 +70,6 @@ export default function ChatPage({
 	const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setInput(e.target.value);
 	};
-
-	useEffect(() => {
-		if (messages.length === 0 && chatId) {
-			const anonymousId = getAnonymousId();
-			fetch(
-				`/api/chat/${chatId}?anonymousId=${encodeURIComponent(anonymousId)}`,
-			)
-				.then((res) => res.json())
-				.then((data) => setMessages(data))
-				.catch((error) => console.error("Failed to load messages:", error));
-		}
-	}, [chatId, messages.length, setMessages]);
 
 	return (
 		<>

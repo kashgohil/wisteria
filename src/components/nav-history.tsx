@@ -9,7 +9,8 @@ import {
 import { useAnonymousId } from "@/hooks/use-anonymous-id";
 import { useQuery } from "convex/react";
 import { Plus } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useChatContext } from "./providers/chat-provider";
 import { Button } from "./ui/button";
 import { ChatList } from "./ui/chat-list";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -36,27 +37,34 @@ function History() {
 }
 
 export function NavHistory() {
+	const router = useRouter();
+	const { initializeChat } = useChatContext();
+
+	const handleNewChat = () => {
+		initializeChat(undefined);
+		router.push("/chat");
+	};
+
 	return (
 		<SidebarGroup className="group-data-[collapsible=icon]:hidden">
 			<SidebarGroupLabel className="text-wisteria-500 flex items-center gap-2 justify-between">
 				<span>Open chats</span>
-				<Link href="/chat">
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								size="icon"
-								variant="ghost"
-								className="!p-1"
-							>
-								<Plus />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							<span>New Chat</span>
-							<span className="sr-only">New Chat</span>
-						</TooltipContent>
-					</Tooltip>
-				</Link>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							size="icon"
+							variant="ghost"
+							className="!p-1"
+							onClick={handleNewChat}
+						>
+							<Plus />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent>
+						<span>New Chat</span>
+						<span className="sr-only">New Chat</span>
+					</TooltipContent>
+				</Tooltip>
 			</SidebarGroupLabel>
 			<History />
 		</SidebarGroup>
