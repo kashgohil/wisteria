@@ -35,10 +35,14 @@ export async function POST(req: Request) {
 
 		const token = await getConvexToken();
 
+		// Ensure userId is never null - use "anonymous" as fallback
+		const effectiveUserId = userId || "anonymous";
+
 		console.log("Processing chat request:", {
 			model,
 			messageCount: messages.length,
 			authenticated: !!token,
+			userId: effectiveUserId,
 		});
 
 		let chatId: Id<"chats"> | string = chatIdParam;
@@ -82,7 +86,7 @@ export async function POST(req: Request) {
 				{
 					name: title,
 					projectId: projectId as Id<"projects"> | undefined,
-					userId,
+					userId: effectiveUserId,
 				},
 				{ token },
 			);
@@ -102,7 +106,7 @@ export async function POST(req: Request) {
 			console.log("Saving user message:", {
 				chatId,
 				contentLength: userMessageContent.length,
-				userId,
+				userId: effectiveUserId,
 			});
 			await fetchMutation(
 				api.messages.create,
@@ -111,7 +115,7 @@ export async function POST(req: Request) {
 					content: userMessageContent,
 					model,
 					role: "user",
-					userId,
+					userId: effectiveUserId,
 				},
 				{ token },
 			);
@@ -157,7 +161,7 @@ export async function POST(req: Request) {
 						responseTime: response.timestamp
 							? Date.now() - response.timestamp.getTime()
 							: 0,
-						userId,
+						userId: effectiveUserId,
 					},
 					{ token },
 				);
