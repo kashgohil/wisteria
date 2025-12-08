@@ -181,7 +181,7 @@ export default function ChatPage({
 						className="flex flex-col gap-4"
 					>
 						<Textarea
-							className="border-none outline-none focus-within:outline-none resize-none min-h-[2.75rem] py-2.5 px-0 !ring-0 shadow-none"
+							className="border-none outline-none focus-within:outline-none resize-none min-h-[2.75rem] p-0 !ring-0 shadow-none"
 							placeholder="Type your message here..."
 							id="message"
 							value={input}
