@@ -1,7 +1,9 @@
 "use client";
 
 import { getAnonymousId } from "@/hooks/use-anonymous-id";
+import { useChatMessages } from "@/hooks/use-chat-messages";
 import { useChat, type UIMessage } from "@ai-sdk/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
 import {
 	createContext,
@@ -59,7 +61,11 @@ export function ChatProvider({
 	const [input, setInput] = useState("");
 	const [chatId, setChatIdState] = useState<string | undefined>(initialChatId);
 	const [isInitialized, setIsInitialized] = useState(false);
-	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+	const queryClient = useQueryClient();
+
+	// Use React Query to fetch messages with caching
+	const { data: cachedMessages, isLoading: isLoadingMessages } =
+		useChatMessages(chatId);
 
 	const modelRef = useRef(model);
 	useEffect(() => {
@@ -138,33 +144,30 @@ export function ChatProvider({
 			if (newInitialMessages && newInitialMessages.length > 0) {
 				setMessages(newInitialMessages);
 				loadedChatIdRef.current = newChatId;
-				setIsLoadingMessages(false);
 			} else if (newChatId && loadedChatIdRef.current !== newChatId) {
-				// Need to fetch messages for this chat
-				setIsLoadingMessages(true);
+				// React Query will handle fetching with caching
+				// Check if we have cached data
 				const anonymousId = getAnonymousId();
-				fetch(
-					`/api/chat/${newChatId}?anonymousId=${encodeURIComponent(anonymousId)}`,
-				)
-					.then((res) => res.json())
-					.then((data) => {
-						setMessages(data);
-						loadedChatIdRef.current = newChatId;
-						setIsLoadingMessages(false);
-					})
-					.catch((error) => {
-						console.error("Failed to load messages:", error);
-						setIsLoadingMessages(false);
-					});
+				const cachedData = queryClient.getQueryData<UIMessage[]>([
+					"chat-messages",
+					newChatId,
+					anonymousId,
+				]);
+
+				if (cachedData) {
+					// Use cached messages immediately
+					setMessages(cachedData);
+					loadedChatIdRef.current = newChatId;
+				}
+				// React Query hook will handle the fetch if needed
 			} else if (!newChatId) {
 				// New chat - clear messages
 				setMessages([]);
 				loadedChatIdRef.current = undefined;
-				setIsLoadingMessages(false);
 			}
 			setIsInitialized(true);
 		},
-		[setMessages],
+		[setMessages, queryClient],
 	);
 
 	// Set chatId without triggering message load (for URL updates)
@@ -172,6 +175,19 @@ export function ChatProvider({
 		setChatIdState(newChatId);
 		chatIdRef.current = newChatId;
 	}, []);
+
+	// Sync cached messages with chat state when they're loaded
+	useEffect(() => {
+		if (
+			cachedMessages &&
+			chatId &&
+			loadedChatIdRef.current !== chatId &&
+			!isLoadingMessages
+		) {
+			setMessages(cachedMessages);
+			loadedChatIdRef.current = chatId;
+		}
+	}, [cachedMessages, chatId, isLoadingMessages, setMessages]);
 
 	// Initialize on mount with initial messages if provided
 	useEffect(() => {
