@@ -2,10 +2,11 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const listByChat = query({
-	args: { chatId: v.id("chats"), anonymousId: v.optional(v.string()) },
+	args: { chatId: v.id("chats"), userId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
-		const userId = identity?.subject ?? args.anonymousId;
+		// Prioritize authenticated user ID over passed userId
+		const userId = identity?.subject ?? args.userId;
 
 		if (!userId) {
 			return [];
@@ -41,11 +42,12 @@ export const create = mutation({
 		response: v.optional(v.string()),
 		responseTokens: v.optional(v.number()),
 		responseTime: v.optional(v.number()),
-		anonymousId: v.optional(v.string()),
+		userId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
-		const userId = identity?.subject ?? args.anonymousId ?? "anonymous";
+		// Prioritize authenticated user ID over passed userId
+		const userId = identity?.subject ?? args.userId ?? "anonymous";
 
 		const messageId = await ctx.db.insert("messages", {
 			chatId: args.chatId,

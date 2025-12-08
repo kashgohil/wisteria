@@ -1,13 +1,13 @@
-import { getAnonymousId } from "@/hooks/use-anonymous-id";
+import { useUserId } from "@/hooks/use-user-id";
 import { UIMessage } from "@ai-sdk/react";
 import { useQuery } from "@tanstack/react-query";
 
 async function fetchChatMessages(
 	chatId: string,
-	anonymousId: string,
+	userId: string,
 ): Promise<UIMessage[]> {
 	const response = await fetch(
-		`/api/chat/${chatId}?anonymousId=${encodeURIComponent(anonymousId)}`,
+		`/api/chat/${chatId}?userId=${encodeURIComponent(userId)}`,
 	);
 	if (!response.ok) {
 		throw new Error("Failed to fetch chat messages");
@@ -16,12 +16,12 @@ async function fetchChatMessages(
 }
 
 export function useChatMessages(chatId: string | undefined) {
-	const anonymousId = getAnonymousId();
+	const userId = useUserId();
 
 	return useQuery({
-		queryKey: ["chat-messages", chatId, anonymousId],
-		queryFn: () => fetchChatMessages(chatId!, anonymousId),
-		enabled: !!chatId && !!anonymousId,
+		queryKey: ["chat-messages", chatId, userId],
+		queryFn: () => fetchChatMessages(chatId!, userId!),
+		enabled: !!chatId && !!userId,
 		staleTime: 5 * 60 * 1000, // 5 minutes
 		gcTime: 10 * 60 * 1000, // 10 minutes
 	});

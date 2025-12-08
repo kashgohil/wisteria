@@ -2,7 +2,7 @@
 
 import { api } from "@/../convex/_generated/api";
 import { Doc, Id } from "@/../convex/_generated/dataModel";
-import { useAnonymousId } from "@/hooks/use-anonymous-id";
+import { useUserId } from "@/hooks/use-user-id";
 import { cn } from "@/lib/utils";
 import { useMutation } from "convex/react";
 import { Edit, MoreVertical, Trash2 } from "lucide-react";
@@ -27,16 +27,16 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 	const currentChatId = pathname.startsWith("/chat/")
 		? pathname.split("/")[2]
 		: null;
-	const anonymousId = useAnonymousId();
+	const userId = useUserId();
 	const deleteChatMutation = useMutation(api.chats.remove);
 
 	const [chatToDelete, setChatToDelete] = useState<Id<"chats"> | null>(null);
 
 	const removeChat = useCallback(
 		(chatId: Id<"chats">) => {
-			deleteChatMutation({ chatId, anonymousId: anonymousId ?? undefined });
+			deleteChatMutation({ chatId, userId: userId ?? undefined });
 		},
-		[deleteChatMutation, anonymousId],
+		[deleteChatMutation, userId],
 	);
 
 	if (!chats?.length) {

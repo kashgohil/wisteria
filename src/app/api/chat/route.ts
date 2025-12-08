@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 			model,
 			chatId: chatIdParam,
 			projectId,
-			anonymousId,
+			userId,
 		} = await req.json();
 
 		if (!messages || !model) {
@@ -46,12 +46,23 @@ export async function POST(req: Request) {
 		// Get the latest user message (last message in the array)
 		const latestUserMessage = messages[messages.length - 1];
 		// Extract text content from the message (handles both string and parts format)
-		const userMessageContent =
-			typeof latestUserMessage.content === "string"
-				? latestUserMessage.content
-				: (latestUserMessage.parts?.find(
-						(p: { type: string }) => p.type === "text",
-					)?.text ?? "");
+		let userMessageContent = "";
+		if (typeof latestUserMessage.content === "string") {
+			userMessageContent = latestUserMessage.content;
+		} else if (
+			latestUserMessage.parts &&
+			Array.isArray(latestUserMessage.parts)
+		) {
+			const textPart = latestUserMessage.parts.find(
+				(p: { type: string; text?: string }) => p.type === "text",
+			);
+			userMessageContent = textPart?.text ?? "";
+		} else if (latestUserMessage.content) {
+			// Fallback: try to stringify if it's an object
+			userMessageContent = JSON.stringify(latestUserMessage.content);
+		}
+
+		console.log("User message content:", userMessageContent);
 
 		if (!chatId) {
 			let title = "New Chat";
@@ -71,7 +82,7 @@ export async function POST(req: Request) {
 				{
 					name: title,
 					projectId: projectId as Id<"projects"> | undefined,
-					anonymousId,
+					userId,
 				},
 				{ token },
 			);
@@ -79,7 +90,20 @@ export async function POST(req: Request) {
 		}
 
 		// Save the user message (await to ensure it's saved before proceeding)
+		if (!userMessageContent || userMessageContent.trim() === "") {
+			console.error("User message content is empty, cannot save");
+			return new Response(
+				JSON.stringify({ error: "Message content is required" }),
+				{ status: 400 },
+			);
+		}
+
 		try {
+			console.log("Saving user message:", {
+				chatId,
+				contentLength: userMessageContent.length,
+				userId,
+			});
 			await fetchMutation(
 				api.messages.create,
 				{
@@ -87,12 +111,14 @@ export async function POST(req: Request) {
 					content: userMessageContent,
 					model,
 					role: "user",
-					anonymousId,
+					userId,
 				},
 				{ token },
 			);
+			console.log("User message saved successfully");
 		} catch (error) {
 			console.error("Failed to save user message:", error);
+			// Don't fail the request, but log the error
 		}
 
 		const chatModel = openRouter(model);
@@ -131,7 +157,7 @@ export async function POST(req: Request) {
 						responseTime: response.timestamp
 							? Date.now() - response.timestamp.getTime()
 							: 0,
-						anonymousId,
+						userId,
 					},
 					{ token },
 				);

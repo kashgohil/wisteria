@@ -1,7 +1,7 @@
 "use client";
 
-import { getAnonymousId } from "@/hooks/use-anonymous-id";
 import { useChatMessages } from "@/hooks/use-chat-messages";
+import { useUserId } from "@/hooks/use-user-id";
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
@@ -62,6 +62,7 @@ export function ChatProvider({
 	const [chatId, setChatIdState] = useState<string | undefined>(initialChatId);
 	const [isInitialized, setIsInitialized] = useState(false);
 	const queryClient = useQueryClient();
+	const userId = useUserId();
 
 	// Use React Query to fetch messages with caching
 	const { data: cachedMessages, isLoading: isLoadingMessages } =
@@ -85,7 +86,14 @@ export function ChatProvider({
 	// Track which chatId we've loaded messages for
 	const loadedChatIdRef = useRef<string | undefined>(undefined);
 
-	const { messages, sendMessage, setMessages, status, stop, error } = useChat({
+	const {
+		messages,
+		sendMessage: originalSendMessage,
+		setMessages,
+		status,
+		stop,
+		error,
+	} = useChat({
 		// Use a single stable id for the chat hook to prevent remounting
 		id: "wisteria-chat",
 		transport: new DefaultChatTransport({
@@ -97,7 +105,7 @@ export function ChatProvider({
 						model: modelRef.current,
 						chatId: chatIdRef.current,
 						projectId: projectIdRef.current,
-						anonymousId: getAnonymousId(),
+						userId,
 					},
 				};
 			},
@@ -121,15 +129,35 @@ export function ChatProvider({
 		onError: (error) => {
 			console.error("Chat error:", error);
 		},
+		onFinish: () => {
+			// Invalidate the query to refetch messages after streaming completes
+			if (chatIdRef.current && userId) {
+				queryClient.invalidateQueries({
+					queryKey: ["chat-messages", chatIdRef.current, userId],
+				});
+			}
+		},
 	});
+
+	// Wrap sendMessage to convert from our format to AI SDK format
+	const sendMessage = useCallback(
+		(params: { text: string }) => {
+			originalSendMessage({
+				role: "user",
+				parts: [{ type: "text", text: params.text }],
+			});
+		},
+		[originalSendMessage],
+	);
 
 	// Initialize chat with a specific chatId and optionally load messages
 	const initializeChat = useCallback(
 		(newChatId: string | undefined, newInitialMessages?: UIMessage[]) => {
-			// If we're already on this chat, don't do anything (preserves streaming state)
+			// If we're already on this chat and messages are loaded, don't do anything
 			if (
 				newChatId === chatIdRef.current &&
-				loadedChatIdRef.current === newChatId
+				loadedChatIdRef.current === newChatId &&
+				newChatId !== undefined
 			) {
 				setIsInitialized(true);
 				return;
@@ -144,20 +172,24 @@ export function ChatProvider({
 			if (newInitialMessages && newInitialMessages.length > 0) {
 				setMessages(newInitialMessages);
 				loadedChatIdRef.current = newChatId;
-			} else if (newChatId && loadedChatIdRef.current !== newChatId) {
+			} else if (newChatId) {
+				// Always try to load messages for a chat, even if we think we've loaded it
 				// React Query will handle fetching with caching
 				// Check if we have cached data
-				const anonymousId = getAnonymousId();
+				if (!userId) return;
 				const cachedData = queryClient.getQueryData<UIMessage[]>([
 					"chat-messages",
 					newChatId,
-					anonymousId,
+					userId,
 				]);
 
 				if (cachedData) {
 					// Use cached messages immediately
 					setMessages(cachedData);
 					loadedChatIdRef.current = newChatId;
+				} else {
+					// Clear messages while loading
+					setMessages([]);
 				}
 				// React Query hook will handle the fetch if needed
 			} else if (!newChatId) {

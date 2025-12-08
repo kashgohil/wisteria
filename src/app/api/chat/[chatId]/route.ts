@@ -8,11 +8,11 @@ export async function GET(
 	{ params }: { params: Promise<{ chatId: string }> },
 ) {
 	const { chatId } = await params;
-	const anonymousId = req.nextUrl.searchParams.get("anonymousId") ?? undefined;
+	const userId = req.nextUrl.searchParams.get("userId") ?? undefined;
 
 	const messages = await fetchQuery(api.messages.listByChat, {
 		chatId: chatId as Id<"chats">,
-		anonymousId,
+		userId,
 	});
 
 	// Convert createdAt timestamp to Date for useChat compatibility

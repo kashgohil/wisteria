@@ -6,7 +6,7 @@ import {
 	SidebarGroupLabel,
 	SidebarMenu,
 } from "@/components/ui/sidebar";
-import { useAnonymousId } from "@/hooks/use-anonymous-id";
+import { useUserId } from "@/hooks/use-user-id";
 import { useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -16,9 +16,9 @@ import { ChatList } from "./ui/chat-list";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 function History() {
-	const anonymousId = useAnonymousId();
+	const userId = useUserId();
 	const userChats = useQuery(api.chats.list, {
-		anonymousId: anonymousId ?? undefined,
+		userId: userId ?? undefined,
 	});
 
 	if (userChats === undefined) {
