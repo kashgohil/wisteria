@@ -10,15 +10,21 @@ import { useUserId } from "@/hooks/use-user-id";
 import { useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { Button } from "./ui/button";
 import { ChatList } from "./ui/chat-list";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 function History() {
 	const userId = useUserId();
-	const userChats = useQuery(api.chats.list, {
-		userId: userId ?? undefined,
-	});
+	// Memoize query args to prevent unnecessary re-fetches
+	const queryArgs = useMemo(
+		() => ({
+			userId: userId ?? undefined,
+		}),
+		[userId],
+	);
+	const userChats = useQuery(api.chats.list, queryArgs);
 
 	if (userChats === undefined) {
 		return (

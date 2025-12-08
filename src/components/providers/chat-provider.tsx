@@ -3,13 +3,14 @@
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import { useUserId } from "@/hooks/use-user-id";
 import { useChat, type UIMessage } from "@ai-sdk/react";
-import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
+import { useRouter, usePathname } from "next/navigation";
 import {
 	createContext,
 	useCallback,
 	useContext,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 	type ReactNode,
@@ -61,10 +62,17 @@ export function ChatProvider({
 	const [input, setInput] = useState("");
 	const [chatId, setChatIdState] = useState<string | undefined>(initialChatId);
 	const [isInitialized, setIsInitialized] = useState(false);
-	const queryClient = useQueryClient();
 	const userId = useUserId();
+	const router = useRouter();
+	const pathname = usePathname();
+	const pathnameRef = useRef(pathname);
+	
+	// Keep pathname ref in sync
+	useEffect(() => {
+		pathnameRef.current = pathname;
+	}, [pathname]);
 
-	// Use React Query to fetch messages with caching
+	// Use Convex real-time queries for messages
 	const { data: cachedMessages, isLoading: isLoadingMessages } =
 		useChatMessages(chatId);
 
@@ -85,6 +93,9 @@ export function ChatProvider({
 
 	// Track which chatId we've loaded messages for
 	const loadedChatIdRef = useRef<string | undefined>(undefined);
+	
+	// Cache messages by chatId for instant display when navigating back
+	const messagesCacheRef = useRef<Map<string, UIMessage[]>>(new Map());
 
 	const {
 		messages,
@@ -111,17 +122,16 @@ export function ChatProvider({
 			},
 			fetch: async (url, options) => {
 				const response = await fetch(url, options);
-				// When a new chat is created, update the chatId and URL
+				// If chatId wasn't set (backend created it), update it and redirect
 				const newChatId = response.headers.get("X-Chat-Id");
 				if (newChatId && !chatIdRef.current) {
 					setChatIdState(newChatId);
 					chatIdRef.current = newChatId;
 					loadedChatIdRef.current = newChatId;
-					// Update URL without navigation/remount using history API
-					const basePath = projectIdRef.current
-						? `/project/${projectIdRef.current}/chat`
-						: "/chat";
-					window.history.replaceState(null, "", `${basePath}/${newChatId}`);
+					// Redirect to the new chat page if we're still on /chat
+					if (pathnameRef.current === "/chat") {
+						router.push(`/chat/${newChatId}`);
+					}
 				}
 				return response;
 			},
@@ -130,18 +140,15 @@ export function ChatProvider({
 			console.error("Chat error:", error);
 		},
 		onFinish: () => {
-			// Invalidate the query to refetch messages after streaming completes
-			if (chatIdRef.current && userId) {
-				queryClient.invalidateQueries({
-					queryKey: ["chat-messages", chatIdRef.current, userId],
-				});
-			}
+			// Messages are now updated via Convex real-time queries, no need to invalidate
 		},
 	});
 
-	// Wrap sendMessage to convert from our format to AI SDK format
+	// Wrap sendMessage to handle chat creation on /chat page
 	const sendMessage = useCallback(
-		(params: { text: string }) => {
+		async (params: { text: string }) => {
+			// Send the message (this will trigger the API call)
+			// The backend will create the chat if chatId is not provided
 			originalSendMessage({
 				role: "user",
 				parts: [{ type: "text", text: params.text }],
@@ -171,27 +178,22 @@ export function ChatProvider({
 
 			if (newInitialMessages && newInitialMessages.length > 0) {
 				setMessages(newInitialMessages);
+				// Cache the initial messages
+				if (newChatId) {
+					messagesCacheRef.current.set(newChatId, newInitialMessages);
+				}
 				loadedChatIdRef.current = newChatId;
 			} else if (newChatId) {
-				// Always try to load messages for a chat, even if we think we've loaded it
-				// React Query will handle fetching with caching
-				// Check if we have cached data
-				if (!userId) return;
-				const cachedData = queryClient.getQueryData<UIMessage[]>([
-					"chat-messages",
-					newChatId,
-					userId,
-				]);
-
-				if (cachedData) {
-					// Use cached messages immediately
-					setMessages(cachedData);
-					loadedChatIdRef.current = newChatId;
+				// Check cache first for instant display
+				const cached = messagesCacheRef.current.get(newChatId);
+				if (cached) {
+					// Use cached messages immediately while Convex query loads
+					setMessages(cached);
 				} else {
-					// Clear messages while loading
+					// Clear messages while loading - Convex real-time query will update them
 					setMessages([]);
 				}
-				// React Query hook will handle the fetch if needed
+				// Convex useQuery will handle fetching with real-time updates
 			} else if (!newChatId) {
 				// New chat - clear messages
 				setMessages([]);
@@ -199,7 +201,7 @@ export function ChatProvider({
 			}
 			setIsInitialized(true);
 		},
-		[setMessages, queryClient],
+		[setMessages],
 	);
 
 	// Set chatId without triggering message load (for URL updates)
@@ -208,18 +210,12 @@ export function ChatProvider({
 		chatIdRef.current = newChatId;
 	}, []);
 
-	// Sync cached messages with chat state when they're loaded
+	// Update loadedChatIdRef when chatId changes
 	useEffect(() => {
-		if (
-			cachedMessages &&
-			chatId &&
-			loadedChatIdRef.current !== chatId &&
-			!isLoadingMessages
-		) {
-			setMessages(cachedMessages);
+		if (chatId) {
 			loadedChatIdRef.current = chatId;
 		}
-	}, [cachedMessages, chatId, isLoadingMessages, setMessages]);
+	}, [chatId]);
 
 	// Initialize on mount with initial messages if provided
 	useEffect(() => {
@@ -232,10 +228,38 @@ export function ChatProvider({
 		}
 	}, [initialChatId, initialMessages, isInitialized, setMessages]);
 
+	// Update cache when we receive new messages from Convex (source of truth)
+	useEffect(() => {
+		if (cachedMessages && chatId) {
+			messagesCacheRef.current.set(chatId, cachedMessages);
+		}
+	}, [cachedMessages, chatId]);
+
+	// Use Convex messages for UI, but keep useChat messages for streaming status
+	// This prevents conflicts between stream updates and DB updates
+	// Use cached messages if available while loading, otherwise use current messages
+	const displayMessages = useMemo(() => {
+		if (cachedMessages && chatId) {
+			// We have fresh data from Convex, use it
+			return cachedMessages;
+		}
+		
+		// If loading and we have cached messages, show cached version
+		if (isLoadingMessages && chatId) {
+			const cached = messagesCacheRef.current.get(chatId);
+			if (cached) {
+				return cached;
+			}
+		}
+		
+		// Fall back to useChat messages (for streaming)
+		return messages;
+	}, [cachedMessages, chatId, isLoadingMessages, messages]);
+
 	return (
 		<ChatContext.Provider
 			value={{
-				messages,
+				messages: displayMessages,
 				sendMessage,
 				setMessages,
 				status,

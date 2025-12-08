@@ -63,3 +63,38 @@ export const create = mutation({
 		return messageId;
 	},
 });
+
+export const updatePartial = mutation({
+	args: {
+		messageId: v.id("messages"),
+		content: v.string(),
+		response: v.optional(v.string()),
+		responseTokens: v.optional(v.number()),
+		responseTime: v.optional(v.number()),
+		userId: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const identity = await ctx.auth.getUserIdentity();
+		// Prioritize authenticated user ID over passed userId
+		const userId = identity?.subject || args.userId || "anonymous";
+
+		const message = await ctx.db.get(args.messageId);
+		if (!message) {
+			throw new Error("Message not found");
+		}
+
+		// Verify ownership
+		if (message.userId !== userId) {
+			throw new Error("Unauthorized");
+		}
+
+		await ctx.db.patch(args.messageId, {
+			content: args.content,
+			response: args.response ?? message.response,
+			responseTokens: args.responseTokens ?? message.responseTokens,
+			responseTime: args.responseTime ?? message.responseTime,
+		});
+
+		return args.messageId;
+	},
+});

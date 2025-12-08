@@ -17,14 +17,20 @@ const openRouter = createOpenRouter({
 const TITLE_GENERATION_MODEL = "google/gemini-2.5-flash-lite";
 
 export async function POST(req: Request) {
+	// Declare variables outside try block so they're accessible in catch block
+	let chatId: Id<"chats"> | string | undefined;
+	let chatIdParam: Id<"chats"> | string | undefined;
+
 	try {
 		const {
 			messages,
 			model,
-			chatId: chatIdParam,
+			chatId: chatIdParamValue,
 			projectId,
 			userId,
 		} = await req.json();
+
+		chatIdParam = chatIdParamValue;
 
 		if (!messages || !model) {
 			return new Response(
@@ -45,7 +51,7 @@ export async function POST(req: Request) {
 			userId: effectiveUserId,
 		});
 
-		let chatId: Id<"chats"> | string = chatIdParam;
+		chatId = chatIdParamValue;
 
 		// Get the latest user message (last message in the array)
 		const latestUserMessage = messages[messages.length - 1];
@@ -144,29 +150,138 @@ export async function POST(req: Request) {
 			}
 		}
 
+		// Create initial assistant message for incremental updates
+		let assistantMessageId: Id<"messages"> | undefined;
+		try {
+			assistantMessageId = await fetchMutation(
+				api.messages.create,
+				{
+					chatId: chatId as Id<"chats">,
+					content: "", // Start with empty content
+					model: model,
+					role: "assistant",
+					userId: effectiveUserId,
+				},
+				{ token },
+			);
+		} catch (error) {
+			console.error("Failed to create initial assistant message:", error);
+		}
+
+		// Batch chunks for incremental saving
+		let accumulatedContent = "";
+		let lastSaveTime = Date.now();
+		const BATCH_INTERVAL_MS = 150; // Save every 150ms
+		const BATCH_MIN_CHARS = 50; // Or every 50 characters, whichever comes first
+		let pendingSave: Promise<void> | null = null;
+		let saveTimeout: NodeJS.Timeout | null = null;
+
+		const saveBatch = async (content: string, isFinal = false) => {
+			if (!assistantMessageId || (!content && !isFinal)) return;
+
+			try {
+				await fetchMutation(
+					api.messages.updatePartial,
+					{
+						messageId: assistantMessageId,
+						content: content,
+						userId: effectiveUserId,
+					},
+					{ token },
+				);
+			} catch (error) {
+				console.error("Failed to save message chunk:", error);
+			}
+		};
+
+		const scheduleSave = (content: string, force = false) => {
+			const now = Date.now();
+			const shouldSave =
+				force ||
+				content.length >= BATCH_MIN_CHARS ||
+				now - lastSaveTime >= BATCH_INTERVAL_MS;
+
+			if (shouldSave && !pendingSave) {
+				lastSaveTime = now;
+				const contentToSave = content;
+				// Don't await - save in background
+				pendingSave = saveBatch(contentToSave, false).finally(() => {
+					pendingSave = null;
+				});
+			} else if (!shouldSave && !saveTimeout) {
+				// Schedule a save after the interval
+				saveTimeout = setTimeout(() => {
+					saveTimeout = null;
+					if (content.length > 0 && !pendingSave) {
+						lastSaveTime = Date.now();
+						const contentToSave = content;
+						pendingSave = saveBatch(contentToSave, false).finally(() => {
+							pendingSave = null;
+						});
+					}
+				}, BATCH_INTERVAL_MS);
+			}
+		};
+
 		const result = streamText({
 			messages: convertToModelMessages(messages),
 			model: chatModel,
 			system: systemPrompt,
 			onFinish: async ({ text, usage, response }) => {
-				await fetchMutation(
-					api.messages.create,
-					{
-						chatId: chatId as Id<"chats">,
-						content: text,
-						model: model,
-						role: "assistant",
-						response: text,
-						responseTokens: usage?.outputTokens,
-						responseTime: response.timestamp
-							? Date.now() - response.timestamp.getTime()
-							: 0,
-						userId: effectiveUserId,
-					},
-					{ token },
-				);
+				// Clear any pending timeout
+				if (saveTimeout) {
+					clearTimeout(saveTimeout);
+					saveTimeout = null;
+				}
+
+				// Wait for any pending save
+				if (pendingSave) {
+					await pendingSave;
+				}
+
+				// Final save with complete content and metadata
+				if (assistantMessageId) {
+					try {
+						await fetchMutation(
+							api.messages.updatePartial,
+							{
+								messageId: assistantMessageId,
+								content: text,
+								response: text,
+								responseTokens: usage?.outputTokens,
+								responseTime: response.timestamp
+									? Date.now() - response.timestamp.getTime()
+									: 0,
+								userId: effectiveUserId,
+							},
+							{ token },
+						);
+					} catch (error) {
+						console.error("Failed to finalize assistant message:", error);
+						// Keep chat even if save fails
+					}
+				}
 			},
 		});
+
+		// Process text stream in parallel to save chunks incrementally
+		if (assistantMessageId) {
+			(async () => {
+				try {
+					for await (const chunk of result.textStream) {
+						accumulatedContent += chunk;
+						scheduleSave(accumulatedContent);
+					}
+					// Final save of any remaining content
+					if (accumulatedContent.length > 0) {
+						await saveBatch(accumulatedContent, true);
+					}
+				} catch (error) {
+					console.error("Error processing text stream:", error);
+					// Keep chat even if stream processing fails
+				}
+			})();
+		}
 
 		// Return the stream with the chatId in headers for new chats
 		const response = result.toUIMessageStreamResponse();
@@ -179,6 +294,26 @@ export async function POST(req: Request) {
 		return response;
 	} catch (error) {
 		console.error("Chat API Error:", error);
+
+		// Even if streaming fails, return the chatId if it was created
+		// This ensures the chat exists even if there was an error
+		if (chatId && !chatIdParam) {
+			return new Response(
+				JSON.stringify({
+					error: "Internal Server Error",
+					details: error instanceof Error ? error.message : "Unknown error",
+					chatId: chatId, // Include chatId so frontend can still redirect
+				}),
+				{
+					status: 500,
+					headers: {
+						"Content-Type": "application/json",
+						"X-Chat-Id": chatId as string,
+					},
+				},
+			);
+		}
+
 		return new Response(
 			JSON.stringify({
 				error: "Internal Server Error",

@@ -10,6 +10,7 @@ import {
 import { useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { useChatContext } from "./providers/chat-provider";
 import { Button } from "./ui/button";
 import { ChatList } from "./ui/chat-list";
@@ -18,7 +19,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 function ProjectChats() {
 	const params = useParams();
 	const projectId = params.projectId as Id<"projects">;
-	const chats = useQuery(api.chats.listByProject, { projectId });
+	// Memoize query args to prevent unnecessary re-fetches
+	const queryArgs = useMemo(() => ({ projectId }), [projectId]);
+	const chats = useQuery(api.chats.listByProject, queryArgs);
 
 	if (chats === undefined) {
 		return (

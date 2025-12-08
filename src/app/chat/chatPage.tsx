@@ -41,12 +41,13 @@ export default function ChatPage({
 	// Initialize/switch chat when chatId changes
 	// Only re-initialize if the initialChatId from the URL differs from the current chatId
 	useEffect(() => {
-		// Skip if we're already on the correct chat (e.g., after URL update via history.replaceState)
+		// Skip if we're already on the correct chat (e.g., after redirect to new chat)
 		if (initialChatId === chatId) {
 			return;
 		}
 		initializeChat(initialChatId);
-	}, [initialChatId, chatId, initializeChat]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [initialChatId, chatId]); // initializeChat is stable, no need to include it
 
 	const submitMessage = () => {
 		if (input.trim()) {
