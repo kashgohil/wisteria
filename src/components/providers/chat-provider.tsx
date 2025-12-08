@@ -128,8 +128,13 @@ export function ChatProvider({
 					setChatIdState(newChatId);
 					chatIdRef.current = newChatId;
 					loadedChatIdRef.current = newChatId;
-					// Redirect to the new chat page if we're still on /chat
-					if (pathnameRef.current === "/chat") {
+					// Redirect to the appropriate chat page
+					const currentProjectId = projectIdRef.current;
+					if (currentProjectId) {
+						// If we're in a project context, redirect to project chat URL
+						router.push(`/project/${currentProjectId}/chat/${newChatId}`);
+					} else if (pathnameRef.current === "/chat") {
+						// Otherwise, redirect to standalone chat URL
 						router.push(`/chat/${newChatId}`);
 					}
 				}

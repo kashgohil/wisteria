@@ -20,7 +20,8 @@ import { SidebarMenuButton, SidebarMenuItem } from "./sidebar";
 
 export function ChatList(props: { chats: Doc<"chats">[] }) {
 	const { chats } = props;
-	const { chatId: currentChatId } = useParams();
+	const params = useParams();
+	const currentChatId = params.chatId as string | undefined;
 	const router = useRouter();
 	const userId = useUserId();
 	const deleteChatMutation = useMutation(api.chats.remove);
@@ -44,72 +45,80 @@ export function ChatList(props: { chats: Doc<"chats">[] }) {
 
 	return (
 		<>
-			{chats.map((item) => (
-				<Fragment key={item._id}>
-					<SidebarMenuItem>
-						<SidebarMenuButton
-							asChild
-							className={cn(
-								"group/menu-item",
-								currentChatId === item._id && "bg-accent/20",
-							)}
-						>
-							<div className="w-full flex items-center justify-between relative">
-								<button
-									type="button"
-									className="w-full text-left"
-									onClick={() => {
-										// Navigate immediately for instant URL update
-										router.push(`/chat/${item._id}`);
-										// Chat initialization happens via useEffect in ChatPage
-									}}
-								>
-									<div className="flex items-center justify-between gap-2">
-										<span className="truncate">{item.name}</span>
-									</div>
-								</button>
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<button>
-											<MoreVertical
-												size={12}
-												className="text-wisteria-500"
-											/>
-										</button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent
-										side="right"
-										align="start"
-										className="w-40"
+			{chats.map((item) => {
+				// Determine the correct URL based on whether chat belongs to a project
+				const chatProjectId = item.projectId;
+				const chatUrl = chatProjectId
+					? `/project/${chatProjectId}/chat/${item._id}`
+					: `/chat/${item._id}`;
+
+				return (
+					<Fragment key={item._id}>
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								asChild
+								className={cn(
+									"group/menu-item",
+									currentChatId === item._id && "bg-accent/20",
+								)}
+							>
+								<div className="w-full flex items-center justify-between relative">
+									<button
+										type="button"
+										className="w-full text-left"
+										onClick={() => {
+											// Navigate immediately for instant URL update
+											router.push(chatUrl);
+											// Chat initialization happens via useEffect in ChatPage
+										}}
 									>
-										<MoveChat chatId={item._id} />
-										<DropdownMenuItem className="group/item">
-											<Edit
-												size={8}
-												className="text-wisteria-600 group-hover/item:text-accent-foreground group-focus/item:text-accent-foreground"
-											/>
-											<span>Edit</span>
-										</DropdownMenuItem>
-										<DropdownMenuItem
-											className="group/item"
-											variant="destructive"
-											onClick={() => {
-												setChatToDelete(item._id);
-											}}
+										<div className="flex items-center justify-between gap-2">
+											<span className="truncate">{item.name}</span>
+										</div>
+									</button>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<button>
+												<MoreVertical
+													size={12}
+													className="text-wisteria-500"
+												/>
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent
+											side="right"
+											align="start"
+											className="w-40"
 										>
-											<Trash2
-												size={8}
-												className="text-wisteria-600 group-hover/item:text-accent-foreground group-focus/item:text-accent-foreground"
-											/>
-											<span>Delete</span>
-										</DropdownMenuItem>
-									</DropdownMenuContent>
-								</DropdownMenu>
-							</div>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-				</Fragment>
-			))}
+											<MoveChat chatId={item._id} />
+											<DropdownMenuItem className="group/item">
+												<Edit
+													size={8}
+													className="text-wisteria-600 group-hover/item:text-accent-foreground group-focus/item:text-accent-foreground"
+												/>
+												<span>Edit</span>
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												className="group/item"
+												variant="destructive"
+												onClick={() => {
+													setChatToDelete(item._id);
+												}}
+											>
+												<Trash2
+													size={8}
+													className="text-wisteria-600 group-hover/item:text-accent-foreground group-focus/item:text-accent-foreground"
+												/>
+												<span>Delete</span>
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</div>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					</Fragment>
+				);
+			})}
 
 			<ConfirmationDialog
 				open={chatToDelete !== null}
