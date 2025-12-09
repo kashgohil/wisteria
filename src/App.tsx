@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
 
 type Project = Awaited<
@@ -10,6 +10,7 @@ type Message = Awaited<
 	ReturnType<typeof window.wisteria.messages.list>
 >[number];
 type ModelOption = { id: string; label: string; provider: string };
+type ThemeMode = "light" | "dark";
 
 function App() {
 	const [projects, setProjects] = useState<Project[]>([]);
@@ -30,6 +31,7 @@ function App() {
 	const [input, setInput] = useState("");
 	const [isSending, setIsSending] = useState(false);
 	const [openRouterKey, setOpenRouterKey] = useState("");
+	const [theme, setTheme] = useState<ThemeMode>("light");
 	const streamMeta = useRef<
 		Record<string, { chatId: string; completed: boolean }>
 	>({});
@@ -43,9 +45,33 @@ function App() {
 		WebkitAppRegion: "no-drag",
 	};
 
+	const applyTheme = useCallback((value: ThemeMode) => {
+		document.documentElement.setAttribute("data-theme", value);
+		window.localStorage.setItem("wisteria-theme", value);
+	}, []);
+
 	useEffect(() => {
 		void bootstrap();
 	}, []);
+
+	useEffect(() => {
+		const saved = window.localStorage.getItem("wisteria-theme");
+		const prefersDark = window.matchMedia?.(
+			"(prefers-color-scheme: dark)",
+		).matches;
+		const initial =
+			saved === "dark" || saved === "light"
+				? (saved as ThemeMode)
+				: prefersDark
+				? "dark"
+				: "light";
+		setTheme(initial);
+		applyTheme(initial);
+	}, [applyTheme]);
+
+	useEffect(() => {
+		applyTheme(theme);
+	}, [applyTheme, theme]);
 
 	useEffect(() => {
 		const offChunk = window.wisteria.models.onStreamChunk((payload) => {
@@ -315,12 +341,9 @@ function App() {
 	}`;
 
 	return (
-		<div
-			className="min-h-screen bg-wisteria-bg text-wisteria-text"
-			style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
-		>
+		<div className="min-h-screen bg-wisteria-bg text-wisteria-text">
 			<header
-				className="flex items-start justify-between gap-3 border-b border-wisteria-border bg-wisteria-header/90 px-6 py-4 shadow-lg shadow-black/30"
+				className="flex items-start justify-between gap-3 border-b border-wisteria-border bg-wisteria-header/90 py-4 pl-[80px] pr-6 shadow-lg shadow-black/30"
 				style={dragRegionStyle}
 			>
 				<div className="space-y-1">
@@ -335,10 +358,22 @@ function App() {
 					</p>
 				</div>
 				<div
-					className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-2 text-xs text-wisteria-text"
+					className="flex items-start gap-2"
 					style={noDragRegionStyle}
 				>
-					{formattedStatus}
+					<button
+						type="button"
+						aria-pressed={theme === "dark"}
+						onClick={() =>
+							setTheme((prev) => (prev === "light" ? "dark" : "light"))
+						}
+						className="rounded-lg border border-wisteria-border bg-wisteria-panelStrong/80 px-3 py-2 text-xs font-semibold text-wisteria-text shadow-sm shadow-black/20 transition hover:border-wisteria-accentStrong hover:bg-wisteria-highlight"
+					>
+						{theme === "light" ? "Dark theme" : "Light theme"}
+					</button>
+					<div className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-2 text-xs text-wisteria-text">
+						{formattedStatus}
+					</div>
 				</div>
 			</header>
 
@@ -368,7 +403,7 @@ function App() {
 										</div>
 									</div>
 									<button
-										className="text-xs text-wisteria-textSubtle hover:text-rose-300"
+										className="text-xs text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
 										onClick={(e) => {
 											e.stopPropagation();
 											void deleteProject(p.id);
@@ -483,7 +518,7 @@ function App() {
 									>
 										<span>{c.name}</span>
 										<button
-											className="text-[11px] text-wisteria-textSubtle hover:text-rose-300"
+											className="text-[11px] text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
 											onClick={(e) => {
 												e.stopPropagation();
 												void deleteChat(c.id);

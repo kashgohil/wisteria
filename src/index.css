@@ -2,20 +2,21 @@
 
 /* stylelint-disable at-rule-no-unknown -- Tailwind v4 theme definitions */
 @theme {
-	--color-wisteria-bg: #0c0a18;
-	--color-wisteria-panel: #171433;
-	--color-wisteria-panelStrong: #120f26;
-	--color-wisteria-header: #131026;
-	--color-wisteria-highlight: #24143f;
-	--color-wisteria-bubbleUser: #1b1535;
-	--color-wisteria-border: #2d2750;
-	--color-wisteria-borderStrong: #3a2f63;
-	--color-wisteria-accent: #8b5cf6;
-	--color-wisteria-accentSoft: #a78bfa;
-	--color-wisteria-accentStrong: #c084fc;
-	--color-wisteria-text: #f6f1ff;
-	--color-wisteria-textSubtle: #c7b8ff;
-	--color-wisteria-textMuted: #b19cf8;
+	--color-wisteria-bg: #fff8f5;
+	--color-wisteria-panel: #fffaf7;
+	--color-wisteria-panelStrong: #fff5f0;
+	--color-wisteria-header: #fff7f3;
+	--color-wisteria-highlight: #ffeef5;
+	--color-wisteria-bubbleUser: #ffeef7;
+	--color-wisteria-border: #f5d5e8;
+	--color-wisteria-borderStrong: #e8c5d5;
+	--color-wisteria-accent: #9d7dd8;
+	--color-wisteria-accentSoft: #b59ae8;
+	--color-wisteria-accentStrong: #8b5cf6;
+	--color-wisteria-text: #4a3a3a;
+	--color-wisteria-textSubtle: #6b5a6b;
+	--color-wisteria-textMuted: #8b7a8b;
+	--color-wisteria-danger: #e8a5a5;
 }
 /* stylelint-enable at-rule-no-unknown */
 
@@ -24,12 +25,58 @@
 		sans-serif;
 	line-height: 1.5;
 	font-weight: 400;
-	color: #e5e7eb;
-	background-color: #0b1020;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	color-scheme: light;
+	--wisteria-backdrop: radial-gradient(circle at 20% 20%, #ffe8f3 0, transparent 40%),
+		radial-gradient(circle at 80% 10%, #f5e8ff 0, transparent 35%),
+		radial-gradient(circle at 50% 90%, #fff0f5 0, transparent 30%), #fff8f5;
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--color-wisteria-bg: #1a1418;
+	--color-wisteria-panel: #241a1f;
+	--color-wisteria-panelStrong: #251c22;
+	--color-wisteria-header: #2a1f25;
+	--color-wisteria-highlight: #2d2228;
+	--color-wisteria-bubbleUser: #2a1f25;
+	--color-wisteria-border: #3d2a35;
+	--color-wisteria-borderStrong: #4a3540;
+	--color-wisteria-accent: #9d7dd8;
+	--color-wisteria-accentSoft: #b59ae8;
+	--color-wisteria-accentStrong: #c084fc;
+	--color-wisteria-text: #f5e8e8;
+	--color-wisteria-textSubtle: #e8d5d5;
+	--color-wisteria-textMuted: #d5c5c5;
+	--color-wisteria-danger: #e8a5a5;
+	--wisteria-backdrop: radial-gradient(circle at 20% 20%, #2d1f28 0, transparent 40%),
+		radial-gradient(circle at 80% 0%, #35222d 0, transparent 35%),
+		radial-gradient(circle at 50% 90%, #2a1f25 0, transparent 30%), #1a1418;
+}
+
+:root[data-theme="light"] {
+	color-scheme: light;
+	--color-wisteria-bg: #fff8f5;
+	--color-wisteria-panel: #fffaf7;
+	--color-wisteria-panelStrong: #fff5f0;
+	--color-wisteria-header: #fff7f3;
+	--color-wisteria-highlight: #ffeef5;
+	--color-wisteria-bubbleUser: #ffeef7;
+	--color-wisteria-border: #f5d5e8;
+	--color-wisteria-borderStrong: #e8c5d5;
+	--color-wisteria-accent: #9d7dd8;
+	--color-wisteria-accentSoft: #b59ae8;
+	--color-wisteria-accentStrong: #8b5cf6;
+	--color-wisteria-text: #4a3a3a;
+	--color-wisteria-textSubtle: #6b5a6b;
+	--color-wisteria-textMuted: #8b7a8b;
+	--color-wisteria-danger: #e8a5a5;
+	--wisteria-backdrop: radial-gradient(circle at 20% 20%, #ffe8f3 0, transparent 40%),
+		radial-gradient(circle at 80% 10%, #f5e8ff 0, transparent 35%),
+		radial-gradient(circle at 50% 90%, #fff0f5 0, transparent 30%), #fff8f5;
 }
 
 *,
@@ -42,8 +89,9 @@ body {
 	margin: 0;
 	min-width: 320px;
 	min-height: 100vh;
-	background: radial-gradient(circle at 20% 20%, #211437, transparent 25%),
-		radial-gradient(circle at 80% 0%, #2f1f55, transparent 30%), #0c0a18;
+	background: var(--wisteria-backdrop);
+	color: var(--color-wisteria-text);
+	transition: background-color 200ms ease, color 200ms ease, background 240ms ease;
 }
 
 a {
@@ -54,3 +102,4 @@ textarea,
 button {
 	font: inherit;
 }
+
