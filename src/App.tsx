@@ -1,3 +1,13 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
@@ -369,16 +379,18 @@ function App() {
 					className="flex items-center gap-2"
 					style={noDragRegionStyle}
 				>
-					<button
+					<Button
 						type="button"
+						variant="outline"
+						size="sm"
 						aria-pressed={theme === "dark"}
 						onClick={() =>
 							setTheme((prev) => (prev === "light" ? "dark" : "light"))
 						}
-						className="rounded-lg border border-wisteria-border bg-wisteria-panelStrong/80 px-3 py-1.5 text-xs font-semibold text-wisteria-text shadow-sm transition hover:border-wisteria-accentStrong hover:bg-wisteria-highlight"
+						className="border-wisteria-border bg-wisteria-panelStrong/80 text-xs font-semibold text-wisteria-text shadow-sm hover:border-wisteria-accentStrong hover:bg-wisteria-highlight"
 					>
 						{theme === "light" ? "🌙" : "☀️"}
-					</button>
+					</Button>
 					<div className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-1.5 text-xs text-wisteria-text">
 						{formattedStatus}
 					</div>
@@ -414,15 +426,17 @@ function App() {
 													: ""}
 											</div>
 										</div>
-										<button
-											className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
+										<Button
+											variant="ghost"
+											size="sm"
+											className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger"
 											onClick={(e) => {
 												e.stopPropagation();
 												void deleteProject(p.id);
 											}}
 										>
 											Delete
-										</button>
+										</Button>
 									</div>
 								))}
 								{projects.length === 0 && (
@@ -432,8 +446,8 @@ function App() {
 								)}
 							</div>
 							<div className="mt-3 flex gap-2">
-								<input
-									className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+								<Input
+									className="w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong"
 									value={newProjectName}
 									onChange={(e) => setNewProjectName(e.target.value)}
 									placeholder="New project name"
@@ -443,13 +457,13 @@ function App() {
 										}
 									}}
 								/>
-								<button
+								<Button
 									onClick={() => void createProject()}
 									disabled={!newProjectName.trim()}
-									className="rounded-lg bg-wisteria-accent px-3 py-2 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
+									className="bg-wisteria-accent text-white hover:bg-wisteria-accentSoft"
 								>
 									Add
-								</button>
+								</Button>
 							</div>
 						</section>
 
@@ -473,15 +487,17 @@ function App() {
 											<div className="min-w-0 flex-1 truncate text-sm font-semibold text-wisteria-text">
 												{c.name}
 											</div>
-											<button
-												className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
+											<Button
+												variant="ghost"
+												size="sm"
+												className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger"
 												onClick={(e) => {
 													e.stopPropagation();
 													void deleteChat(c.id);
 												}}
 											>
 												Delete
-											</button>
+											</Button>
 										</div>
 									))}
 								{selectedProjectId &&
@@ -493,8 +509,8 @@ function App() {
 									)}
 							</div>
 							<div className="mt-3 flex gap-2">
-								<input
-									className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+								<Input
+									className="w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong"
 									value={newChatName}
 									onChange={(e) => setNewChatName(e.target.value)}
 									placeholder="New chat title"
@@ -505,13 +521,13 @@ function App() {
 										}
 									}}
 								/>
-								<button
+								<Button
 									onClick={() => void createChat()}
 									disabled={!newChatName.trim() || !selectedProjectId}
-									className="rounded-lg bg-wisteria-accent px-3 py-2 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
+									className="bg-wisteria-accent text-white hover:bg-wisteria-accentSoft"
 								>
 									Add
-								</button>
+								</Button>
 							</div>
 						</section>
 
@@ -520,20 +536,22 @@ function App() {
 								<div className="text-sm font-semibold text-wisteria-text">
 									System prompt
 								</div>
-								<textarea
-									className="mt-2 w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+								<Textarea
+									className="mt-2 w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong"
 									value={systemPrompt}
 									onChange={(e) => setSystemPrompt(e.target.value)}
 									onBlur={() => void persistSystemPrompt()}
 									placeholder="Shared system prompt for all chats in this project"
 									rows={4}
 								/>
-								<button
-									className="mt-2 text-xs font-semibold text-wisteria-accentStrong underline-offset-2 hover:underline"
+								<Button
+									variant="link"
+									size="sm"
+									className="mt-2 text-xs font-semibold text-wisteria-accentStrong"
 									onClick={() => void persistSystemPrompt()}
 								>
 									Save prompt
-								</button>
+								</Button>
 							</section>
 						)}
 					</div>
@@ -582,21 +600,24 @@ function App() {
 					<div className="border-t border-wisteria-border bg-wisteria-panel/50 p-4">
 						<div className="mx-auto max-w-4xl space-y-3">
 							<div className="flex gap-3">
-								<select
-									className="shrink-0 rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
-									value={selectedModelId}
-									onChange={(e) => void persistModelSelection(e.target.value)}
+								<Select
+									value={selectedModelId || undefined}
+									onValueChange={(value) => void persistModelSelection(value)}
 								>
-									<option value="">Pick a model…</option>
-									{models.map((m) => (
-										<option
-											key={`${m.provider}:${m.id}`}
-											value={`${m.provider}:${m.id}`}
-										>
-											[{m.provider}] {m.label}
-										</option>
-									))}
-								</select>
+									<SelectTrigger className="shrink-0 w-fit border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong">
+										<SelectValue placeholder="Pick a model…" />
+									</SelectTrigger>
+									<SelectContent className="border-wisteria-border bg-wisteria-panelStrong text-wisteria-text">
+										{models.map((m) => (
+											<SelectItem
+												key={`${m.provider}:${m.id}`}
+												value={`${m.provider}:${m.id}`}
+											>
+												[{m.provider}] {m.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 								<div className="flex-1">
 									<label
 										htmlFor="chat-input"
@@ -604,7 +625,7 @@ function App() {
 									>
 										Chat input
 									</label>
-									<textarea
+									<Textarea
 										id="chat-input"
 										ref={composerRef}
 										value={input}
@@ -613,34 +634,36 @@ function App() {
 										placeholder="Type a message and hit Enter to send"
 										rows={4}
 										disabled={!selectedChatId || isSending}
-										className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-4 py-3 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong disabled:opacity-60 resize-none"
+										className="w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong resize-none"
 									/>
 								</div>
-								<button
+								<Button
 									onClick={() => void sendMessage()}
 									disabled={!input.trim() || isSending || !selectedChatId}
-									className="shrink-0 self-end rounded-lg bg-wisteria-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
+									className="shrink-0 self-end bg-wisteria-accent text-white hover:bg-wisteria-accentSoft"
 								>
 									{isSending ? "Sending…" : "Send"}
-								</button>
+								</Button>
 							</div>
 							{activeProject && (
 								<div className="flex items-center gap-2 text-xs text-wisteria-textMuted">
 									<span>OpenRouter API key:</span>
-									<input
-										className="flex-1 rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-1.5 text-xs text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+									<Input
+										className="flex-1 border-wisteria-border bg-wisteria-panelStrong text-xs text-wisteria-text focus-visible:ring-wisteria-accentStrong"
 										value={openRouterKey}
 										onChange={(e) => setOpenRouterKey(e.target.value)}
 										placeholder="sk-..."
 										type="password"
 									/>
-									<button
-										className="rounded-lg border border-wisteria-borderStrong px-3 py-1.5 text-xs font-semibold text-wisteria-text transition hover:border-wisteria-accentStrong disabled:opacity-60"
+									<Button
+										variant="outline"
+										size="sm"
+										className="border-wisteria-borderStrong text-xs font-semibold text-wisteria-text hover:border-wisteria-accentStrong"
 										onClick={() => void saveOpenRouter()}
 										disabled={!openRouterKey.trim()}
 									>
 										Save
-									</button>
+									</Button>
 								</div>
 							)}
 						</div>
