@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { closeDb } from "./db";
 import { registerIpcHandlers } from "./ipc";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// ESM shim so bundled CommonJS snippets (e.g. better-sqlite3) can access these
+export const __filename = fileURLToPath(import.meta.url);
+export const __dirname = path.dirname(__filename);
 
 // The built directory structure
 //
@@ -33,6 +35,13 @@ function createWindow() {
 		icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
+		},
+		titleBarStyle: "hiddenInset",
+		backgroundColor: "#0c0a18",
+		titleBarOverlay: {
+			color: "#131026",
+			symbolColor: "#f6f1ff",
+			height: 44,
 		},
 	});
 

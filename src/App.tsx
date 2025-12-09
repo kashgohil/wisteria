@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
 
@@ -31,6 +32,13 @@ function App() {
 	const [openRouterKey, setOpenRouterKey] = useState("");
 
 	const composerRef = useRef<HTMLTextAreaElement | null>(null);
+	const dragRegionStyle: CSSProperties & { WebkitAppRegion?: string } = {
+		WebkitAppRegion: "drag",
+		WebkitUserSelect: "none",
+	};
+	const noDragRegionStyle: CSSProperties & { WebkitAppRegion?: string } = {
+		WebkitAppRegion: "no-drag",
+	};
 
 	useEffect(() => {
 		void bootstrap();
@@ -238,8 +246,14 @@ function App() {
 	}`;
 
 	return (
-		<div className="min-h-screen bg-wisteria-bg text-wisteria-text">
-			<header className="flex items-start justify-between gap-3 border-b border-wisteria-border bg-wisteria-header/90 px-6 py-4 shadow-lg shadow-black/30">
+		<div
+			className="min-h-screen bg-wisteria-bg text-wisteria-text"
+			style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
+		>
+			<header
+				className="flex items-start justify-between gap-3 border-b border-wisteria-border bg-wisteria-header/90 px-6 py-4 shadow-lg shadow-black/30"
+				style={dragRegionStyle}
+			>
 				<div className="space-y-1">
 					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-wisteria-accentStrong">
 						Wisteria
@@ -251,7 +265,10 @@ function App() {
 						Projects group chats, models are selectable, data stays local.
 					</p>
 				</div>
-				<div className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-2 text-xs text-wisteria-text">
+				<div
+					className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-2 text-xs text-wisteria-text"
+					style={noDragRegionStyle}
+				>
 					{formattedStatus}
 				</div>
 			</header>
@@ -390,7 +407,7 @@ function App() {
 										key={c.id}
 										className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
 											c.id === selectedChatId
-												? "border-wisteria-accentStrong bg-[#24143f] text-wisteria-text"
+												? "border-wisteria-accentStrong bg-wisteria-highlight text-wisteria-text"
 												: "border-wisteria-border bg-wisteria-panelStrong/60 text-wisteria-text hover:border-wisteria-borderStrong"
 										}`}
 										onClick={() => void selectChat(c.id)}

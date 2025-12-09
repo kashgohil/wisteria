@@ -1,8 +1,13 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import electron from "vite-plugin-electron/simple";
+
+// __dirname is not available in ESM by default; recreate it for path helpers
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig({
