@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/* stylelint-disable at-rule-no-unknown -- Tailwind v4 theme definitions */
+@theme {
+	--color-wisteria-bg: #0c0a18;
+	--color-wisteria-panel: #171433;
+	--color-wisteria-panelStrong: #120f26;
+	--color-wisteria-header: #131026;
+	--color-wisteria-highlight: #24143f;
+	--color-wisteria-bubbleUser: #1b1535;
+	--color-wisteria-border: #2d2750;
+	--color-wisteria-borderStrong: #3a2f63;
+	--color-wisteria-accent: #8b5cf6;
+	--color-wisteria-accentSoft: #a78bfa;
+	--color-wisteria-accentStrong: #c084fc;
+	--color-wisteria-text: #f6f1ff;
+	--color-wisteria-textSubtle: #c7b8ff;
+	--color-wisteria-textMuted: #b19cf8;
+}
+/* stylelint-enable at-rule-no-unknown */
+
 :root {
 	font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 		sans-serif;
@@ -23,8 +42,8 @@ body {
 	margin: 0;
 	min-width: 320px;
 	min-height: 100vh;
-	background: radial-gradient(circle at 20% 20%, #111827, transparent 25%),
-		radial-gradient(circle at 80% 0%, #1f2937, transparent 30%), #0b1020;
+	background: radial-gradient(circle at 20% 20%, #211437, transparent 25%),
+		radial-gradient(circle at 80% 0%, #2f1f55, transparent 30%), #0c0a18;
 }
 
 a {
