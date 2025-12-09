@@ -35,14 +35,34 @@ async function fetchWithTimeout(
 	}
 }
 
-function logConnectionIssue(label: string, err: unknown) {
+function isConnectionRefused(err: unknown): boolean {
 	const code = (err as { code?: string })?.code;
-	if (code === "ECONNREFUSED") {
+	if (code === "ECONNREFUSED")
+		return (err as Error).message.includes("ECONNREFUSED");
+	const cause = (err as { cause?: unknown })?.cause as
+		| { code?: string; errors?: unknown[] }
+		| undefined;
+	if (cause?.code === "ECONNREFUSED") return true;
+	if (Array.isArray(cause?.errors)) {
+		return cause.errors.some(
+			(e) => (e as { code?: string })?.code === "ECONNREFUSED",
+		);
+	}
+	return false;
+}
+
+function logConnectionIssue(label: string, err: unknown) {
+	if (isConnectionRefused(err)) {
+		// LM Studio / Ollama not running; keep log minimal
 		console.info(`${label} not reachable on localhost`);
 		return;
 	}
+	if ((err as { name?: string })?.name === "AbortError") {
+		console.info(`${label} request timed out`);
+		return;
+	}
 	// Reduce noise while still surfacing unexpected errors
-	console.warn(`${label} request issue`, err);
+	console.warn(`${label} request issue`);
 }
 
 export async function listOllamaModels(): Promise<
