@@ -1,7 +1,7 @@
 {
 	"name": "wisteria",
-	"description": "Local + BYOK Chat",
-	"author": "Kash",
+	"description": "Interact with any LLM of your choice, locally and BYOK.",
+	"author": "Kash Gohil",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
