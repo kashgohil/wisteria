@@ -7,7 +7,6 @@ type Project = Awaited<
 	ReturnType<typeof window.wisteria.projects.list>
 >[number];
 type Chat = Awaited<ReturnType<typeof window.wisteria.chats.list>>[number];
-type ModelOption = { id: string; label: string; provider: string };
 
 interface AppSidebarProps {
 	projects: Project[];
@@ -24,15 +23,11 @@ interface AppSidebarProps {
 		value: "light" | "dark" | ((prev: "light" | "dark") => "light" | "dark"),
 	) => void;
 	formattedStatus: string;
-	models: ModelOption[];
-	uniqueProviders: string[];
 	onSelectProject: (projectId: string) => Promise<void>;
 	onDeleteProject: (projectId: string) => Promise<void>;
 	onCreateProject: (data: {
 		name: string;
 		systemPrompt?: string;
-		modelProvider?: string;
-		modelId?: string;
 	}) => Promise<void>;
 	onSelectChat: (chatId: string) => Promise<void>;
 	onDeleteChat: (chatId: string) => Promise<void>;
@@ -53,8 +48,6 @@ export function AppSidebar({
 	theme,
 	setTheme,
 	formattedStatus,
-	models,
-	uniqueProviders,
 	onSelectProject,
 	onDeleteProject,
 	onCreateProject,
@@ -70,8 +63,6 @@ export function AppSidebar({
 					projects={projects}
 					chats={chats}
 					selectedProjectId={selectedProjectId}
-					models={models}
-					uniqueProviders={uniqueProviders}
 					onSelectProject={onSelectProject}
 					onDeleteProject={onDeleteProject}
 					onCreateProject={onCreateProject}

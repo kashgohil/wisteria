@@ -2,9 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { Chat, Message, Project } from "./db";
 import type { ChatModelRequest, ChatModelResponse } from "./models/connectors";
 
-export type ProjectUpdate = Partial<
-	Pick<Project, "name" | "system_prompt" | "model_provider" | "model_id">
->;
+export type ProjectUpdate = Partial<Pick<Project, "name" | "system_prompt">>;
 
 const api = {
 	projects: {

@@ -1,15 +1,13 @@
-import "./shim"; // Ensure CommonJS globals exist for native deps
 import Database from "better-sqlite3";
 import { app } from "electron";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import "./shim"; // Ensure CommonJS globals exist for native deps
 
 export type Project = {
 	id: string;
 	name: string;
 	system_prompt: string;
-	model_provider: string | null;
-	model_id: string | null;
 	created_at: number;
 };
 
@@ -45,8 +43,6 @@ function ensureDb() {
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			system_prompt TEXT NOT NULL DEFAULT '',
-			model_provider TEXT,
-			model_id TEXT,
 			created_at INTEGER NOT NULL
 		);
 		CREATE TABLE IF NOT EXISTS chats (
@@ -83,13 +79,11 @@ export function createProject(name: string): Project {
 		id: randomUUID(),
 		name,
 		system_prompt: "",
-		model_provider: null,
-		model_id: null,
 		created_at: Date.now(),
 	};
 	database
 		.prepare(
-			"INSERT INTO projects (id, name, system_prompt, model_provider, model_id, created_at) VALUES (@id, @name, @system_prompt, @model_provider, @model_id, @created_at)",
+			"INSERT INTO projects (id, name, system_prompt, created_at) VALUES (@id, @name, @system_prompt, @created_at)",
 		)
 		.run(project);
 	return project;
@@ -97,9 +91,7 @@ export function createProject(name: string): Project {
 
 export function updateProject(
 	projectId: string,
-	data: Partial<
-		Pick<Project, "name" | "system_prompt" | "model_provider" | "model_id">
-	>,
+	data: Partial<Pick<Project, "name" | "system_prompt">>,
 ): Project | null {
 	const database = ensureDb();
 	const existing = database
@@ -112,7 +104,7 @@ export function updateProject(
 	};
 	database
 		.prepare(
-			"UPDATE projects SET name=@name, system_prompt=@system_prompt, model_provider=@model_provider, model_id=@model_id WHERE id=@id",
+			"UPDATE projects SET name=@name, system_prompt=@system_prompt WHERE id=@id",
 		)
 		.run(updated);
 	return updated;

@@ -8,13 +8,6 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 
@@ -22,8 +15,6 @@ type Project = {
 	id: string;
 	name: string;
 	system_prompt: string | null;
-	model_provider: string | null;
-	model_id: string | null;
 	created_at: number;
 };
 
@@ -34,21 +25,15 @@ type Chat = {
 	created_at: number;
 };
 
-type ModelOption = { id: string; label: string; provider: string };
-
 interface ProjectListProps {
 	projects: Project[];
 	chats: Chat[];
 	selectedProjectId: string | null;
-	models: ModelOption[];
-	uniqueProviders: string[];
 	onSelectProject: (projectId: string) => void;
 	onDeleteProject: (projectId: string) => void;
 	onCreateProject: (data: {
 		name: string;
 		systemPrompt?: string;
-		modelProvider?: string;
-		modelId?: string;
 	}) => Promise<void>;
 }
 
@@ -56,8 +41,6 @@ export function ProjectList({
 	projects,
 	chats,
 	selectedProjectId,
-	models,
-	uniqueProviders,
 	onSelectProject,
 	onDeleteProject,
 	onCreateProject,
@@ -65,8 +48,6 @@ export function ProjectList({
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [projectName, setProjectName] = useState("");
 	const [systemPrompt, setSystemPrompt] = useState("");
-	const [provider, setProvider] = useState("");
-	const [modelId, setModelId] = useState("");
 
 	const handleCreate = async () => {
 		const name = projectName.trim();
@@ -75,23 +56,17 @@ export function ProjectList({
 		await onCreateProject({
 			name,
 			systemPrompt: systemPrompt.trim() || undefined,
-			modelProvider: provider || undefined,
-			modelId: modelId || undefined,
 		});
 
 		// Reset form
 		setProjectName("");
 		setSystemPrompt("");
-		setProvider("");
-		setModelId("");
 		setIsDialogOpen(false);
 	};
 
 	const handleCancel = () => {
 		setProjectName("");
 		setSystemPrompt("");
-		setProvider("");
-		setModelId("");
 		setIsDialogOpen(false);
 	};
 
@@ -164,8 +139,7 @@ export function ProjectList({
 							Create New Project
 						</DialogTitle>
 						<DialogDescription className="text-wisteria-textSubtle">
-							Create a new project with a name, system prompt, and model
-							configuration.
+							Create a new project with a name and system prompt.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
@@ -205,67 +179,6 @@ export function ProjectList({
 								placeholder="Optional system prompt for all chats in this project"
 								rows={4}
 							/>
-						</div>
-						<div className="space-y-2">
-							<label
-								htmlFor="project-provider"
-								className="text-sm font-medium text-wisteria-text"
-							>
-								Model Provider
-							</label>
-							<Select
-								value={provider || undefined}
-								onValueChange={setProvider}
-							>
-								<SelectTrigger
-									id="project-provider"
-									className="border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
-								>
-									<SelectValue placeholder="Select provider (optional)" />
-								</SelectTrigger>
-								<SelectContent className="border-wisteria-border bg-wisteria-panel text-wisteria-text shadow-lg">
-									{uniqueProviders.map((p) => (
-										<SelectItem
-											key={p}
-											value={p}
-										>
-											{p}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="space-y-2">
-							<label
-								htmlFor="project-model"
-								className="text-sm font-medium text-wisteria-text"
-							>
-								Model
-							</label>
-							<Select
-								value={modelId || undefined}
-								onValueChange={setModelId}
-								disabled={!provider}
-							>
-								<SelectTrigger
-									id="project-model"
-									className="border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent disabled:opacity-50"
-								>
-									<SelectValue placeholder="Select model (optional)" />
-								</SelectTrigger>
-								<SelectContent className="border-wisteria-border bg-wisteria-panel text-wisteria-text shadow-lg">
-									{models
-										.filter((m) => m.provider === provider)
-										.map((m) => (
-											<SelectItem
-												key={m.id}
-												value={m.id}
-											>
-												{m.label}
-											</SelectItem>
-										))}
-								</SelectContent>
-							</Select>
 						</div>
 					</div>
 					<DialogFooter>

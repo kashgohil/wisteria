@@ -156,13 +156,6 @@ function App() {
 		const proj = list.find((p) => p.id === projectId);
 		if (proj) {
 			setSystemPrompt(proj.system_prompt ?? "");
-			if (proj.model_id && proj.model_provider) {
-				setSelectedProvider(proj.model_provider);
-				setSelectedModelId(proj.model_id);
-			} else {
-				setSelectedProvider("");
-				setSelectedModelId("");
-			}
 		}
 		const chatList = await window.wisteria.chats.list(projectId);
 		setChats(chatList);
@@ -178,18 +171,14 @@ function App() {
 	const handleCreateProject = async (data: {
 		name: string;
 		systemPrompt?: string;
-		modelProvider?: string;
-		modelId?: string;
 	}) => {
 		setStatus("Creating project…");
 		const proj = await window.wisteria.projects.create(data.name);
 
-		// Update project with additional fields if provided
-		if (data.systemPrompt || data.modelProvider || data.modelId) {
+		// Update project with system prompt if provided
+		if (data.systemPrompt) {
 			await window.wisteria.projects.update(proj.id, {
 				system_prompt: data.systemPrompt,
-				model_provider: data.modelProvider,
-				model_id: data.modelId,
 			});
 		}
 
@@ -202,8 +191,6 @@ function App() {
 		const updated = await window.wisteria.projects.update(selectedProjectId, {
 			name: data.name,
 			system_prompt: data.system_prompt,
-			model_provider: data.model_provider,
-			model_id: data.model_id,
 		});
 		if (updated) {
 			setProjects((prev) =>
@@ -254,21 +241,13 @@ function App() {
 		await updateProjectMeta({ system_prompt: systemPrompt });
 	};
 
-	const persistProviderSelection = async (value: string) => {
+	const handleProviderChange = (value: string) => {
 		setSelectedProvider(value);
 		setSelectedModelId(""); // Reset model when provider changes
-		await updateProjectMeta({
-			model_provider: value,
-			model_id: "",
-		});
 	};
 
-	const persistModelSelection = async (value: string) => {
+	const handleModelChange = (value: string) => {
 		setSelectedModelId(value);
-		await updateProjectMeta({
-			model_provider: selectedProvider,
-			model_id: value,
-		});
 	};
 
 	const saveOpenRouter = async () => {
@@ -424,8 +403,6 @@ function App() {
 					theme={theme}
 					setTheme={setTheme}
 					formattedStatus={formattedStatus}
-					models={models}
-					uniqueProviders={uniqueProviders}
 					onSelectProject={selectProject}
 					onDeleteProject={deleteProject}
 					onCreateProject={handleCreateProject}
@@ -481,9 +458,7 @@ function App() {
 							<div className="flex gap-3">
 								<Select
 									value={selectedProvider || undefined}
-									onValueChange={(value) =>
-										void persistProviderSelection(value)
-									}
+									onValueChange={handleProviderChange}
 								>
 									<SelectTrigger className="shrink-0 w-fit border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent">
 										<SelectValue placeholder="Provider…" />
@@ -501,7 +476,7 @@ function App() {
 								</Select>
 								<Select
 									value={selectedModelId || undefined}
-									onValueChange={(value) => void persistModelSelection(value)}
+									onValueChange={handleModelChange}
 									disabled={!selectedProvider}
 								>
 									<SelectTrigger className="shrink-0 w-fit border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent disabled:opacity-50">
