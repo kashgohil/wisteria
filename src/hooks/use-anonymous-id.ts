@@ -26,18 +26,3 @@ export function useAnonymousId() {
 
 	return anonymousId;
 }
-
-export function getAnonymousId(): string {
-	if (typeof window === "undefined") {
-		return generateAnonymousId();
-	}
-
-	let id = localStorage.getItem(ANONYMOUS_ID_KEY);
-
-	if (!id) {
-		id = generateAnonymousId();
-		localStorage.setItem(ANONYMOUS_ID_KEY, id);
-	}
-
-	return id;
-}

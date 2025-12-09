@@ -3,7 +3,7 @@ import { Id } from "@/../convex/_generated/dataModel";
 import { useUserId } from "@/hooks/use-user-id";
 import { UIMessage } from "@ai-sdk/react";
 import { useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 // Module-level cache that persists across component remounts
 const messagesCache = new Map<string, UIMessage[]>();
@@ -16,24 +16,6 @@ export function useChatMessages(chatId: string | undefined) {
 		() => (chatId && userId ? `${chatId}-${userId}` : null),
 		[chatId, userId],
 	);
-
-	// Check cache synchronously - use lazy initializer for useState
-	const [cachedData, setCachedData] = useState<UIMessage[] | null>(() => {
-		if (cacheKey) {
-			return messagesCache.get(cacheKey) || null;
-		}
-		return null;
-	});
-
-	// Update cached data when cache key changes
-	useEffect(() => {
-		if (cacheKey) {
-			const cached = messagesCache.get(cacheKey);
-			setCachedData(cached || null);
-		} else {
-			setCachedData(null);
-		}
-	}, [cacheKey]);
 
 	// Memoize query args to prevent unnecessary re-fetches
 	const queryArgs = useMemo(
@@ -71,23 +53,11 @@ export function useChatMessages(chatId: string | undefined) {
 		}
 	}, [uiMessages, chatId, userId]);
 
-	// Transform cached messages if we have them (they're already in UIMessage format)
+	// Read cached messages directly from cache (they're already in UIMessage format)
 	const cachedUiMessages: UIMessage[] = useMemo(() => {
-		if (!cachedData) {
-			return [];
-		}
-		// Cached data is already in UIMessage format, just ensure dates are Date objects
-		return cachedData.map((msg) => {
-			const msgWithDate = msg as UIMessage & { createdAt?: Date | number };
-			return {
-				...msg,
-				createdAt:
-					msgWithDate.createdAt instanceof Date
-						? msgWithDate.createdAt
-						: new Date(msgWithDate.createdAt ?? Date.now()),
-			} as UIMessage & { createdAt: Date };
-		});
-	}, [cachedData]);
+		if (!cacheKey) return [];
+		return messagesCache.get(cacheKey) || [];
+	}, [cacheKey]);
 
 	// Transform Convex messages to UIMessage format
 	// Convex queries return undefined while loading

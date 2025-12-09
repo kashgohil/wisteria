@@ -2,9 +2,8 @@
 
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import { useUserId } from "@/hooks/use-user-id";
-import { useChat, type UIMessage } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { usePathname, useRouter } from "next/navigation";
+import type { UIMessage } from "@ai-sdk/react";
+import { useRouter } from "next/navigation";
 import {
 	createContext,
 	useCallback,
@@ -49,125 +48,182 @@ export function useChatContext() {
 
 export function ChatProvider({
 	children,
-	initialChatId,
+
 	initialMessages = [],
 	projectId,
 }: {
 	children: ReactNode;
-	initialChatId?: string;
+
 	initialMessages?: UIMessage[];
 	projectId?: string;
 }) {
 	const [model, setModel] = useState("google/gemini-2.5-flash-lite");
 	const [input, setInput] = useState("");
-	const [chatId, setChatIdState] = useState<string | undefined>(initialChatId);
+	const [chatId, setChatIdState] = useState<string | undefined>();
 	const [isInitialized, setIsInitialized] = useState(false);
+
 	const userId = useUserId();
 	const router = useRouter();
-	const pathname = usePathname();
-	const pathnameRef = useRef(pathname);
-
-	// Keep pathname ref in sync
-	useEffect(() => {
-		pathnameRef.current = pathname;
-	}, [pathname]);
 
 	// Use Convex real-time queries for messages
 	const { data: cachedMessages, isLoading: isLoadingMessages } =
 		useChatMessages(chatId);
 
-	const modelRef = useRef(model);
-	useEffect(() => {
-		modelRef.current = model;
-	}, [model]);
-
-	const chatIdRef = useRef(chatId);
-	useEffect(() => {
-		chatIdRef.current = chatId;
-	}, [chatId]);
-
-	const projectIdRef = useRef(projectId);
-	useEffect(() => {
-		projectIdRef.current = projectId;
-	}, [projectId]);
-
-	// Track which chatId we've loaded messages for
+	// Track which chatId we've loaded messages for (to prevent unnecessary reloads)
 	const loadedChatIdRef = useRef<string | undefined>(undefined);
 
-	// Cache messages by chatId for instant display when navigating back
-	const messagesCacheRef = useRef<Map<string, UIMessage[]>>(new Map());
+	// Local messages state for setMessages (for initial messages before Convex loads)
+	const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
 
-	const {
-		messages,
-		sendMessage: originalSendMessage,
-		setMessages,
-		status,
-		stop,
-		error,
-	} = useChat({
-		// Use a single stable id for the chat hook to prevent remounting
-		id: "wisteria-chat",
-		transport: new DefaultChatTransport({
-			api: "/api/chat",
-			prepareSendMessagesRequest: async ({ messages }) => {
-				return {
-					body: {
-						messages,
-						model: modelRef.current,
-						chatId: chatIdRef.current,
-						projectId: projectIdRef.current,
-						userId,
-					},
+	// Status and error management
+	const [status, setStatus] = useState<
+		"streaming" | "submitted" | "ready" | "error"
+	>("ready");
+	const [error, setError] = useState<Error | undefined>(undefined);
+	const abortControllerRef = useRef<AbortController | null>(null);
+
+	// Stop function to abort ongoing requests
+	const stop = useCallback(() => {
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+			abortControllerRef.current = null;
+			setStatus("ready");
+		}
+	}, []);
+
+	// Send message function
+	const sendMessage = useCallback(
+		async (params: { text: string }) => {
+			// Abort any ongoing request
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort();
+			}
+
+			// Create new abort controller for this request
+			const abortController = new AbortController();
+			abortControllerRef.current = abortController;
+
+			setStatus("submitted");
+			setError(undefined);
+
+			try {
+				// Get current messages from Convex or local state
+				// useChatMessages already handles caching internally
+				const currentMessages = cachedMessages || localMessages;
+
+				// Prepare the request body
+				const requestBody = {
+					messages: currentMessages,
+					model,
+					chatId,
+					projectId,
+					userId,
 				};
-			},
-			fetch: async (url, options) => {
-				const response = await fetch(url, options);
+
+				// Add the new user message to the request
+				const userMessage: UIMessage = {
+					id: `temp-${Date.now()}`,
+					role: "user",
+					parts: [{ type: "text", text: params.text }],
+				};
+
+				requestBody.messages = [...currentMessages, userMessage];
+
+				// Make the API call
+				const response = await fetch("/api/chat", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(requestBody),
+					signal: abortController.signal,
+				});
+
+				// Check if request was aborted
+				if (abortController.signal.aborted) {
+					return;
+				}
+
+				if (!response.ok) {
+					const errorData = await response.json().catch(() => ({}));
+					throw new Error(
+						errorData.error || `HTTP error! status: ${response.status}`,
+					);
+				}
+
 				// If chatId wasn't set (backend created it), update it and redirect
 				const newChatId = response.headers.get("X-Chat-Id");
-				if (newChatId && !chatIdRef.current) {
+				if (newChatId && !chatId) {
 					setChatIdState(newChatId);
-					chatIdRef.current = newChatId;
 					loadedChatIdRef.current = newChatId;
 					// Redirect to the appropriate chat page
-					const currentProjectId = projectIdRef.current;
-					if (currentProjectId) {
+					if (projectId) {
 						// If we're in a project context, redirect to project chat URL
-						router.push(`/project/${currentProjectId}/chat/${newChatId}`);
-					} else if (pathnameRef.current === "/chat") {
+						router.push(`/project/${projectId}/chat/${newChatId}`);
+					} else {
 						// Otherwise, redirect to standalone chat URL
 						router.push(`/chat/${newChatId}`);
 					}
 				}
-				return response;
-			},
-		}),
-		onError: (error) => {
-			console.error("Chat error:", error);
-		},
-		onFinish: () => {
-			// Messages are now updated via Convex real-time queries, no need to invalidate
-		},
-	});
 
-	// Wrap sendMessage to handle chat creation on /chat page
-	const sendMessage = useCallback(
-		async (params: { text: string }) => {
-			// Send the message (this will trigger the API call)
-			// The backend will create the chat if chatId is not provided
-			originalSendMessage({
-				role: "user",
-				parts: [{ type: "text", text: params.text }],
-			});
+				// Start reading the stream (we don't use it, but need to consume it)
+				// The backend saves to Convex, which we'll receive via real-time queries
+				setStatus("streaming");
+				const reader = response.body?.getReader();
+				if (reader) {
+					// Consume the stream without processing it
+					// We rely on Convex real-time updates instead
+					try {
+						while (true) {
+							const { done } = await reader.read();
+							if (done || abortController.signal.aborted) {
+								break;
+							}
+						}
+					} catch (streamError) {
+						// Ignore abort errors
+						if (
+							streamError instanceof Error &&
+							streamError.name !== "AbortError"
+						) {
+							console.error("Error reading stream:", streamError);
+						}
+					}
+				}
+
+				// Update status - Convex will update messages via real-time query
+				if (!abortController.signal.aborted) {
+					setStatus("ready");
+				}
+			} catch (err) {
+				// Ignore abort errors
+				if (err instanceof Error && err.name === "AbortError") {
+					return;
+				}
+
+				console.error("Chat error:", err);
+				setError(err instanceof Error ? err : new Error("Unknown error"));
+				setStatus("error");
+			} finally {
+				if (abortControllerRef.current === abortController) {
+					abortControllerRef.current = null;
+				}
+			}
 		},
-		[originalSendMessage],
+		[cachedMessages, localMessages, userId, router, model, chatId, projectId],
 	);
+
+	// setMessages function for local state management
+	const setMessages = useCallback((messages: UIMessage[]) => {
+		setLocalMessages(messages);
+	}, []);
 
 	// Initialize chat with a specific chatId and optionally load messages
 	const initializeChat = useCallback(
 		(newChatId: string | undefined, newInitialMessages?: UIMessage[]) => {
 			// If we're already on this chat and messages are loaded, don't do anything
 			if (
-				newChatId === chatIdRef.current &&
+				newChatId === chatId &&
 				loadedChatIdRef.current === newChatId &&
 				newChatId !== undefined
 			) {
@@ -176,29 +232,17 @@ export function ChatProvider({
 			}
 
 			// If we're switching to a different chat
-			if (newChatId !== chatIdRef.current) {
+			if (newChatId !== chatId) {
 				setChatIdState(newChatId);
-				chatIdRef.current = newChatId;
 			}
 
 			if (newInitialMessages && newInitialMessages.length > 0) {
 				setMessages(newInitialMessages);
-				// Cache the initial messages
-				if (newChatId) {
-					messagesCacheRef.current.set(newChatId, newInitialMessages);
-				}
 				loadedChatIdRef.current = newChatId;
 			} else if (newChatId) {
-				// Check cache first for instant display
-				const cached = messagesCacheRef.current.get(newChatId);
-				if (cached) {
-					// Use cached messages immediately while Convex query loads
-					setMessages(cached);
-				} else {
-					// Clear messages while loading - Convex real-time query will update them
-					setMessages([]);
-				}
-				// Convex useQuery will handle fetching with real-time updates
+				// Clear local messages - useChatMessages will handle caching and loading
+				// It already returns cached data immediately while loading
+				setMessages([]);
 			} else if (!newChatId) {
 				// New chat - clear messages
 				setMessages([]);
@@ -206,13 +250,12 @@ export function ChatProvider({
 			}
 			setIsInitialized(true);
 		},
-		[setMessages],
+		[setMessages, chatId],
 	);
 
 	// Set chatId without triggering message load (for URL updates)
 	const setChatId = useCallback((newChatId: string | undefined) => {
 		setChatIdState(newChatId);
-		chatIdRef.current = newChatId;
 	}, []);
 
 	// Update loadedChatIdRef when chatId changes
@@ -225,41 +268,30 @@ export function ChatProvider({
 	// Initialize on mount with initial messages if provided
 	useEffect(() => {
 		if (!isInitialized) {
-			if (initialMessages.length > 0) {
-				setMessages(initialMessages);
-				loadedChatIdRef.current = initialChatId;
-			}
 			setIsInitialized(true);
 		}
-	}, [initialChatId, initialMessages, isInitialized, setMessages]);
+	}, [initialMessages, isInitialized, setMessages]);
 
-	// Update cache when we receive new messages from Convex (source of truth)
+	// Cleanup abort controller on unmount
 	useEffect(() => {
-		if (cachedMessages && chatId) {
-			messagesCacheRef.current.set(chatId, cachedMessages);
-		}
-	}, [cachedMessages, chatId]);
+		return () => {
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort();
+			}
+		};
+	}, []);
 
-	// Use Convex messages for UI, but keep useChat messages for streaming status
-	// This prevents conflicts between stream updates and DB updates
-	// Use cached messages if available while loading, otherwise use current messages
+	// Use Convex messages for UI (source of truth)
+	// useChatMessages already handles caching and returns cached data while loading
 	const displayMessages = useMemo(() => {
-		if (cachedMessages && chatId) {
-			// We have fresh data from Convex, use it
+		// useChatMessages returns cached data immediately when loading, so we can use it directly
+		if (cachedMessages) {
 			return cachedMessages;
 		}
 
-		// If loading and we have cached messages, show cached version
-		if (isLoadingMessages && chatId) {
-			const cached = messagesCacheRef.current.get(chatId);
-			if (cached) {
-				return cached;
-			}
-		}
-
-		// Fall back to useChat messages (for streaming)
-		return messages;
-	}, [cachedMessages, chatId, isLoadingMessages, messages]);
+		// Fall back to local messages (for initial state before Convex loads)
+		return localMessages;
+	}, [cachedMessages, localMessages]);
 
 	return (
 		<ChatContext.Provider
