@@ -9,7 +9,8 @@
 		"dev": "vite",
 		"build": "tsc && vite build && electron-builder",
 		"lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"db": "sqlite3 ~/Library/Application\\ Support/Wisteria/wisteria.db"
 	},
 	"dependencies": {
 		"@radix-ui/react-dialog": "^1.1.15",

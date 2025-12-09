@@ -36,7 +36,11 @@ function createWindow() {
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 		},
-		titleBarStyle: "customButtonsOnHover",
+		titleBarStyle: "hiddenInset",
+		trafficLightPosition: {
+			x: 8,
+			y: 8,
+		},
 	});
 
 	// Test active push message to Renderer-process.

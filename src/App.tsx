@@ -1,3 +1,4 @@
+import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,10 +16,13 @@ import "./index.css";
 type Project = Awaited<
 	ReturnType<typeof window.wisteria.projects.list>
 >[number];
+
 type Chat = Awaited<ReturnType<typeof window.wisteria.chats.list>>[number];
+
 type Message = Awaited<
 	ReturnType<typeof window.wisteria.messages.list>
 >[number];
+
 type ModelOption = { id: string; label: string; provider: string };
 type ThemeMode = "light" | "dark";
 
@@ -33,9 +37,9 @@ function App() {
 	);
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
-	const [newProjectName, setNewProjectName] = useState("");
 	const [newChatName, setNewChatName] = useState("");
 	const [systemPrompt, setSystemPrompt] = useState("");
+	const [selectedProvider, setSelectedProvider] = useState("ollama");
 	const [selectedModelId, setSelectedModelId] = useState("");
 	const [status, setStatus] = useState("Ready");
 	const [input, setInput] = useState("");
@@ -50,9 +54,6 @@ function App() {
 	const dragRegionStyle: CSSProperties & { WebkitAppRegion?: string } = {
 		WebkitAppRegion: "drag",
 		WebkitUserSelect: "none",
-	};
-	const noDragRegionStyle: CSSProperties & { WebkitAppRegion?: string } = {
-		WebkitAppRegion: "no-drag",
 	};
 
 	const applyTheme = useCallback((value: ThemeMode) => {
@@ -111,6 +112,16 @@ function App() {
 		[projects, selectedProjectId],
 	);
 
+	const uniqueProviders = useMemo(
+		() => Array.from(new Set(models.map((m) => m.provider))).sort(),
+		[models],
+	);
+
+	const filteredModels = useMemo(
+		() => models.filter((m) => m.provider === selectedProvider),
+		[models, selectedProvider],
+	);
+
 	const bootstrap = async () => {
 		setStatus("Loading…");
 		const [proj, modelList, savedKey] = await Promise.all([
@@ -146,8 +157,10 @@ function App() {
 		if (proj) {
 			setSystemPrompt(proj.system_prompt ?? "");
 			if (proj.model_id && proj.model_provider) {
-				setSelectedModelId(`${proj.model_provider}:${proj.model_id}`);
+				setSelectedProvider(proj.model_provider);
+				setSelectedModelId(proj.model_id);
 			} else {
+				setSelectedProvider("");
 				setSelectedModelId("");
 			}
 		}
@@ -162,12 +175,24 @@ function App() {
 		setStatus("Ready");
 	};
 
-	const createProject = async () => {
-		const name = newProjectName.trim();
-		if (!name) return;
+	const handleCreateProject = async (data: {
+		name: string;
+		systemPrompt?: string;
+		modelProvider?: string;
+		modelId?: string;
+	}) => {
 		setStatus("Creating project…");
-		const proj = await window.wisteria.projects.create(name);
-		setNewProjectName("");
+		const proj = await window.wisteria.projects.create(data.name);
+
+		// Update project with additional fields if provided
+		if (data.systemPrompt || data.modelProvider || data.modelId) {
+			await window.wisteria.projects.update(proj.id, {
+				system_prompt: data.systemPrompt,
+				model_provider: data.modelProvider,
+				model_id: data.modelId,
+			});
+		}
+
 		await refreshProjects(proj.id);
 		setStatus("Ready");
 	};
@@ -229,12 +254,20 @@ function App() {
 		await updateProjectMeta({ system_prompt: systemPrompt });
 	};
 
+	const persistProviderSelection = async (value: string) => {
+		setSelectedProvider(value);
+		setSelectedModelId(""); // Reset model when provider changes
+		await updateProjectMeta({
+			model_provider: value,
+			model_id: "",
+		});
+	};
+
 	const persistModelSelection = async (value: string) => {
 		setSelectedModelId(value);
-		const [provider, ...rest] = value.split(":");
 		await updateProjectMeta({
-			model_provider: provider,
-			model_id: rest.join(":"),
+			model_provider: selectedProvider,
+			model_id: value,
 		});
 	};
 
@@ -244,12 +277,11 @@ function App() {
 
 	const sendMessage = async () => {
 		if (!input.trim() || !selectedChatId || !activeProject) return;
-		if (!selectedModelId) {
-			setStatus("Pick a model first");
+		if (!selectedProvider || !selectedModelId) {
+			setStatus("Pick a provider and model first");
 			return;
 		}
-		const [provider, ...rest] = selectedModelId.split(":");
-		const modelId = rest.join(":");
+		const modelId = selectedModelId;
 		setIsSending(true);
 		setStatus("Sending…");
 		const userMessage = await window.wisteria.messages.append(
@@ -284,7 +316,7 @@ function App() {
 
 		try {
 			const response = await window.wisteria.models.send({
-				provider: provider as "ollama" | "lmstudio" | "openrouter",
+				provider: selectedProvider as "ollama" | "lmstudio" | "openrouter",
 				model: modelId,
 				messages: history,
 				stream: true,
@@ -347,27 +379,29 @@ function App() {
 	};
 
 	const formattedStatus = `${status}${
-		selectedModelId ? ` • Model: ${selectedModelId}` : ""
+		selectedProvider && selectedModelId
+			? ` • ${selectedProvider}:${selectedModelId}`
+			: ""
 	}`;
 
 	return (
-		<div className="flex h-screen flex-col bg-wisteria-bg text-wisteria-text">
+		<div className="flex h-screen flex-col bg-wisteria-accent/20 text-wisteria-text relative">
 			<header
-				className="flex shrink-0 items-center justify-between gap-3 border-b border-wisteria-border bg-wisteria-header px-6 py-3 pl-[80px] shadow-md"
+				className="flex items-center justify-between gap-4 top-0 right-0 p-4"
 				style={dragRegionStyle}
-			>
+			></header>
+			<div>
 				<div className="flex items-center gap-3">
-					<div className="text-sm font-bold text-wisteria-text">Wisteria</div>
 					{activeProject && (
 						<>
-							<div className="h-4 w-px bg-wisteria-border" />
-							<div className="text-sm text-wisteria-textSubtle">
+							<div className="h-3 w-px bg-wisteria-border/60" />
+							<div className="text-sm text-wisteria-textSubtle font-medium">
 								{activeProject.name}
 							</div>
 							{selectedChatId && (
 								<>
-									<div className="h-4 w-px bg-wisteria-border" />
-									<div className="text-sm text-wisteria-textSubtle">
+									<div className="h-3 w-px bg-wisteria-border/60" />
+									<div className="text-sm text-wisteria-textSubtle font-medium">
 										{chats.find((c) => c.id === selectedChatId)?.name}
 									</div>
 								</>
@@ -375,194 +409,38 @@ function App() {
 						</>
 					)}
 				</div>
-				<div
-					className="flex items-center gap-2"
-					style={noDragRegionStyle}
-				>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						aria-pressed={theme === "dark"}
-						onClick={() =>
-							setTheme((prev) => (prev === "light" ? "dark" : "light"))
-						}
-						className="border-wisteria-border bg-wisteria-panelStrong/80 text-xs font-semibold text-wisteria-text shadow-sm hover:border-wisteria-accentStrong hover:bg-wisteria-highlight"
-					>
-						{theme === "light" ? "🌙" : "☀️"}
-					</Button>
-					<div className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-1.5 text-xs text-wisteria-text">
-						{formattedStatus}
-					</div>
-				</div>
-			</header>
+			</div>
+			<div className="flex flex-1 overflow-hidden p-2 gap-2">
+				<AppSidebar
+					projects={projects}
+					chats={chats}
+					selectedProjectId={selectedProjectId}
+					selectedChatId={selectedChatId}
+					activeProject={activeProject}
+					newChatName={newChatName}
+					setNewChatName={setNewChatName}
+					systemPrompt={systemPrompt}
+					setSystemPrompt={setSystemPrompt}
+					theme={theme}
+					setTheme={setTheme}
+					formattedStatus={formattedStatus}
+					models={models}
+					uniqueProviders={uniqueProviders}
+					onSelectProject={selectProject}
+					onDeleteProject={deleteProject}
+					onCreateProject={handleCreateProject}
+					onSelectChat={selectChat}
+					onDeleteChat={deleteChat}
+					onCreateChat={createChat}
+					onPersistSystemPrompt={persistSystemPrompt}
+				/>
 
-			<div className="flex flex-1 overflow-hidden">
-				<aside className="w-80 shrink-0 overflow-y-auto border-r border-wisteria-border bg-wisteria-panel/50 p-4">
-					<div className="flex flex-col gap-4">
-						<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
-							<div className="text-sm font-semibold text-wisteria-text">
-								Projects
-							</div>
-							<div className="mt-3 space-y-2">
-								{projects.map((p) => (
-									<div
-										key={p.id}
-										className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 transition ${
-											p.id === selectedProjectId
-												? "border-wisteria-accentStrong bg-wisteria-highlight"
-												: "border-wisteria-border bg-wisteria-panelStrong/60 hover:border-wisteria-borderStrong"
-										}`}
-										onClick={() => void selectProject(p.id)}
-									>
-										<div className="min-w-0 flex-1">
-											<div className="text-sm font-semibold text-wisteria-text truncate">
-												{p.name}
-											</div>
-											<div className="text-xs text-wisteria-textMuted">
-												{chats.filter((c) => c.project_id === p.id).length} chat
-												{chats.filter((c) => c.project_id === p.id).length !== 1
-													? "s"
-													: ""}
-											</div>
-										</div>
-										<Button
-											variant="ghost"
-											size="sm"
-											className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger"
-											onClick={(e) => {
-												e.stopPropagation();
-												void deleteProject(p.id);
-											}}
-										>
-											Delete
-										</Button>
-									</div>
-								))}
-								{projects.length === 0 && (
-									<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-3 py-2 text-xs text-wisteria-textMuted">
-										No projects yet.
-									</div>
-								)}
-							</div>
-							<div className="mt-3 flex gap-2">
-								<Input
-									className="w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong"
-									value={newProjectName}
-									onChange={(e) => setNewProjectName(e.target.value)}
-									placeholder="New project name"
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void createProject();
-										}
-									}}
-								/>
-								<Button
-									onClick={() => void createProject()}
-									disabled={!newProjectName.trim()}
-									className="bg-wisteria-accent text-white hover:bg-wisteria-accentSoft"
-								>
-									Add
-								</Button>
-							</div>
-						</section>
-
-						<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
-							<div className="text-sm font-semibold text-wisteria-text">
-								Chats
-							</div>
-							<div className="mt-3 space-y-2">
-								{chats
-									.filter((c) => c.project_id === selectedProjectId)
-									.map((c) => (
-										<div
-											key={c.id}
-											className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 transition ${
-												c.id === selectedChatId
-													? "border-wisteria-accentStrong bg-wisteria-highlight"
-													: "border-wisteria-border bg-wisteria-panelStrong/60 hover:border-wisteria-borderStrong"
-											}`}
-											onClick={() => void selectChat(c.id)}
-										>
-											<div className="min-w-0 flex-1 truncate text-sm font-semibold text-wisteria-text">
-												{c.name}
-											</div>
-											<Button
-												variant="ghost"
-												size="sm"
-												className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger"
-												onClick={(e) => {
-													e.stopPropagation();
-													void deleteChat(c.id);
-												}}
-											>
-												Delete
-											</Button>
-										</div>
-									))}
-								{selectedProjectId &&
-									chats.filter((c) => c.project_id === selectedProjectId)
-										.length === 0 && (
-										<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-3 py-2 text-xs text-wisteria-textMuted">
-											No chats for this project.
-										</div>
-									)}
-							</div>
-							<div className="mt-3 flex gap-2">
-								<Input
-									className="w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong"
-									value={newChatName}
-									onChange={(e) => setNewChatName(e.target.value)}
-									placeholder="New chat title"
-									disabled={!selectedProjectId}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && selectedProjectId) {
-											void createChat();
-										}
-									}}
-								/>
-								<Button
-									onClick={() => void createChat()}
-									disabled={!newChatName.trim() || !selectedProjectId}
-									className="bg-wisteria-accent text-white hover:bg-wisteria-accentSoft"
-								>
-									Add
-								</Button>
-							</div>
-						</section>
-
-						{activeProject && (
-							<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
-								<div className="text-sm font-semibold text-wisteria-text">
-									System prompt
-								</div>
-								<Textarea
-									className="mt-2 w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong"
-									value={systemPrompt}
-									onChange={(e) => setSystemPrompt(e.target.value)}
-									onBlur={() => void persistSystemPrompt()}
-									placeholder="Shared system prompt for all chats in this project"
-									rows={4}
-								/>
-								<Button
-									variant="link"
-									size="sm"
-									className="mt-2 text-xs font-semibold text-wisteria-accentStrong"
-									onClick={() => void persistSystemPrompt()}
-								>
-									Save prompt
-								</Button>
-							</section>
-						)}
-					</div>
-				</aside>
-
-				<main className="flex flex-1 flex-col overflow-hidden">
-					<div className="flex-1 overflow-y-auto p-6">
-						<div className="mx-auto max-w-4xl space-y-4">
+				<main className="flex flex-1 border rounded-lg bg-wisteria-bg flex-col overflow-hidden">
+					<div className="flex-1 overflow-y-auto p-8">
+						<div className="mx-auto max-w-4xl space-y-6">
 							{messages.length === 0 && (
 								<div className="flex h-full items-center justify-center">
-									<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-6 py-4 text-center text-sm text-wisteria-textMuted">
+									<div className="rounded-lg border border-dashed border-wisteria-border bg-wisteria-panelStrong/30 px-6 py-4 text-center text-sm text-wisteria-textMuted">
 										No messages yet. Start a conversation below.
 									</div>
 								</div>
@@ -570,12 +448,13 @@ function App() {
 							{messages.map((msg) => (
 								<div
 									key={msg.id}
-									className="space-y-1"
+									className="space-y-2"
 								>
-									<div className="flex items-center gap-3 text-xs text-wisteria-textSubtle">
-										<span className="font-semibold capitalize text-wisteria-accentStrong">
+									<div className="flex items-center gap-2 text-xs text-wisteria-textMuted">
+										<span className="font-medium capitalize text-wisteria-accent">
 											{msg.role}
 										</span>
+										<span>·</span>
 										<span>
 											{new Date(msg.created_at).toLocaleTimeString([], {
 												hour: "2-digit",
@@ -584,10 +463,10 @@ function App() {
 										</span>
 									</div>
 									<div
-										className={`whitespace-pre-wrap rounded-xl border px-4 py-3 text-sm leading-relaxed ${
+										className={`whitespace-pre-wrap rounded-lg px-4 py-3 text-sm leading-relaxed ${
 											msg.role === "user"
-												? "border-wisteria-borderStrong bg-wisteria-bubbleUser"
-												: "border-wisteria-border bg-wisteria-panelStrong"
+												? "bg-wisteria-bubbleUser"
+												: "bg-wisteria-panel"
 										}`}
 									>
 										{msg.content}
@@ -597,23 +476,44 @@ function App() {
 						</div>
 					</div>
 
-					<div className="border-t border-wisteria-border bg-wisteria-panel/50 p-4">
-						<div className="mx-auto max-w-4xl space-y-3">
+					<div className="border-t border-wisteria-border bg-wisteria-panel/30 p-5 backdrop-blur-sm">
+						<div className="mx-auto max-w-4xl space-y-4">
 							<div className="flex gap-3">
+								<Select
+									value={selectedProvider || undefined}
+									onValueChange={(value) =>
+										void persistProviderSelection(value)
+									}
+								>
+									<SelectTrigger className="shrink-0 w-fit border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent">
+										<SelectValue placeholder="Provider…" />
+									</SelectTrigger>
+									<SelectContent className="border border-wisteria-border bg-wisteria-panel text-wisteria-text shadow-lg">
+										{uniqueProviders.map((provider) => (
+											<SelectItem
+												key={provider}
+												value={provider}
+											>
+												{provider}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 								<Select
 									value={selectedModelId || undefined}
 									onValueChange={(value) => void persistModelSelection(value)}
+									disabled={!selectedProvider}
 								>
-									<SelectTrigger className="shrink-0 w-fit border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong">
-										<SelectValue placeholder="Pick a model…" />
+									<SelectTrigger className="shrink-0 w-fit border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent disabled:opacity-50">
+										<SelectValue placeholder="Model…" />
 									</SelectTrigger>
-									<SelectContent className="border-wisteria-border bg-wisteria-panelStrong text-wisteria-text">
-										{models.map((m) => (
+									<SelectContent className="border border-wisteria-border bg-wisteria-panel text-wisteria-text shadow-lg">
+										{filteredModels.map((m) => (
 											<SelectItem
-												key={`${m.provider}:${m.id}`}
-												value={`${m.provider}:${m.id}`}
+												key={m.id}
+												value={m.id}
 											>
-												[{m.provider}] {m.label}
+												{m.label}
 											</SelectItem>
 										))}
 									</SelectContent>
@@ -634,13 +534,13 @@ function App() {
 										placeholder="Type a message and hit Enter to send"
 										rows={4}
 										disabled={!selectedChatId || isSending}
-										className="w-full border-wisteria-border bg-wisteria-panelStrong text-sm text-wisteria-text focus-visible:ring-wisteria-accentStrong resize-none"
+										className="w-full border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent resize-none"
 									/>
 								</div>
 								<Button
 									onClick={() => void sendMessage()}
 									disabled={!input.trim() || isSending || !selectedChatId}
-									className="shrink-0 self-end bg-wisteria-accent text-white hover:bg-wisteria-accentSoft"
+									className="shrink-0 self-end bg-wisteria-accent font-medium text-white hover:bg-wisteria-accentSoft transition-colors disabled:opacity-50"
 								>
 									{isSending ? "Sending…" : "Send"}
 								</Button>
@@ -649,7 +549,7 @@ function App() {
 								<div className="flex items-center gap-2 text-xs text-wisteria-textMuted">
 									<span>OpenRouter API key:</span>
 									<Input
-										className="flex-1 border-wisteria-border bg-wisteria-panelStrong text-xs text-wisteria-text focus-visible:ring-wisteria-accentStrong"
+										className="flex-1 border border-wisteria-border bg-wisteria-panel text-xs text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
 										value={openRouterKey}
 										onChange={(e) => setOpenRouterKey(e.target.value)}
 										placeholder="sk-..."
@@ -658,7 +558,7 @@ function App() {
 									<Button
 										variant="outline"
 										size="sm"
-										className="border-wisteria-borderStrong text-xs font-semibold text-wisteria-text hover:border-wisteria-accentStrong"
+										className="border border-wisteria-border text-xs font-medium text-wisteria-text hover:border-wisteria-accent hover:bg-wisteria-highlight transition-colors"
 										onClick={() => void saveOpenRouter()}
 										disabled={!openRouterKey.trim()}
 									>
