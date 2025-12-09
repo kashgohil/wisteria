@@ -36,13 +36,7 @@ function createWindow() {
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 		},
-		titleBarStyle: "hiddenInset",
-		backgroundColor: "#0c0a18",
-		titleBarOverlay: {
-			color: "#131026",
-			symbolColor: "#f6f1ff",
-			height: 44,
-		},
+		titleBarStyle: "customButtonsOnHover",
 	});
 
 	// Test active push message to Renderer-process.

@@ -30,7 +30,11 @@
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	color-scheme: light;
-	--wisteria-backdrop: radial-gradient(circle at 20% 20%, #ffe8f3 0, transparent 40%),
+	--wisteria-backdrop: radial-gradient(
+			circle at 20% 20%,
+			#ffe8f3 0,
+			transparent 40%
+		),
 		radial-gradient(circle at 80% 10%, #f5e8ff 0, transparent 35%),
 		radial-gradient(circle at 50% 90%, #fff0f5 0, transparent 30%), #fff8f5;
 }
@@ -52,7 +56,11 @@
 	--color-wisteria-textSubtle: #e8d5d5;
 	--color-wisteria-textMuted: #d5c5c5;
 	--color-wisteria-danger: #e8a5a5;
-	--wisteria-backdrop: radial-gradient(circle at 20% 20%, #2d1f28 0, transparent 40%),
+	--wisteria-backdrop: radial-gradient(
+			circle at 20% 20%,
+			#2d1f28 0,
+			transparent 40%
+		),
 		radial-gradient(circle at 80% 0%, #35222d 0, transparent 35%),
 		radial-gradient(circle at 50% 90%, #2a1f25 0, transparent 30%), #1a1418;
 }
@@ -74,7 +82,11 @@
 	--color-wisteria-textSubtle: #6b5a6b;
 	--color-wisteria-textMuted: #8b7a8b;
 	--color-wisteria-danger: #e8a5a5;
-	--wisteria-backdrop: radial-gradient(circle at 20% 20%, #ffe8f3 0, transparent 40%),
+	--wisteria-backdrop: radial-gradient(
+			circle at 20% 20%,
+			#ffe8f3 0,
+			transparent 40%
+		),
 		radial-gradient(circle at 80% 10%, #f5e8ff 0, transparent 35%),
 		radial-gradient(circle at 50% 90%, #fff0f5 0, transparent 30%), #fff8f5;
 }
@@ -91,7 +103,8 @@ body {
 	min-height: 100vh;
 	background: var(--wisteria-backdrop);
 	color: var(--color-wisteria-text);
-	transition: background-color 200ms ease, color 200ms ease, background 240ms ease;
+	transition: background-color 200ms ease, color 200ms ease,
+		background 240ms ease;
 }
 
 a {
@@ -102,4 +115,3 @@ textarea,
 button {
 	font: inherit;
 }
-

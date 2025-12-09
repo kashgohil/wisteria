@@ -341,24 +341,32 @@ function App() {
 	}`;
 
 	return (
-		<div className="min-h-screen bg-wisteria-bg text-wisteria-text">
+		<div className="flex h-screen flex-col bg-wisteria-bg text-wisteria-text">
 			<header
-				className="flex items-start justify-between gap-3 border-b border-wisteria-border bg-wisteria-header/90 py-4 pl-[80px] pr-6 shadow-lg shadow-black/30"
+				className="flex shrink-0 items-center justify-between gap-3 border-b border-wisteria-border bg-wisteria-header px-6 py-3 pl-[80px] shadow-md"
 				style={dragRegionStyle}
 			>
-				<div className="space-y-1">
-					<div className="text-xs font-semibold uppercase tracking-[0.2em] text-wisteria-accentStrong">
-						Wisteria
-					</div>
-					<h1 className="text-xl font-bold text-wisteria-text">
-						Local + BYOK Chat
-					</h1>
-					<p className="text-sm text-wisteria-textSubtle">
-						Projects group chats, models are selectable, data stays local.
-					</p>
+				<div className="flex items-center gap-3">
+					<div className="text-sm font-bold text-wisteria-text">Wisteria</div>
+					{activeProject && (
+						<>
+							<div className="h-4 w-px bg-wisteria-border" />
+							<div className="text-sm text-wisteria-textSubtle">
+								{activeProject.name}
+							</div>
+							{selectedChatId && (
+								<>
+									<div className="h-4 w-px bg-wisteria-border" />
+									<div className="text-sm text-wisteria-textSubtle">
+										{chats.find((c) => c.id === selectedChatId)?.name}
+									</div>
+								</>
+							)}
+						</>
+					)}
 				</div>
 				<div
-					className="flex items-start gap-2"
+					className="flex items-center gap-2"
 					style={noDragRegionStyle}
 				>
 					<button
@@ -367,201 +375,180 @@ function App() {
 						onClick={() =>
 							setTheme((prev) => (prev === "light" ? "dark" : "light"))
 						}
-						className="rounded-lg border border-wisteria-border bg-wisteria-panelStrong/80 px-3 py-2 text-xs font-semibold text-wisteria-text shadow-sm shadow-black/20 transition hover:border-wisteria-accentStrong hover:bg-wisteria-highlight"
+						className="rounded-lg border border-wisteria-border bg-wisteria-panelStrong/80 px-3 py-1.5 text-xs font-semibold text-wisteria-text shadow-sm transition hover:border-wisteria-accentStrong hover:bg-wisteria-highlight"
 					>
-						{theme === "light" ? "Dark theme" : "Light theme"}
+						{theme === "light" ? "🌙" : "☀️"}
 					</button>
-					<div className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-2 text-xs text-wisteria-text">
+					<div className="rounded-lg border border-wisteria-borderStrong bg-wisteria-panel/80 px-3 py-1.5 text-xs text-wisteria-text">
 						{formattedStatus}
 					</div>
 				</div>
 			</header>
 
-			<div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-6 py-6 lg:grid-cols-[320px_1fr]">
-				<aside className="flex flex-col gap-4">
-					<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
-						<div className="text-sm font-semibold text-wisteria-text">
-							Projects
-						</div>
-						<div className="mt-3 space-y-2">
-							{projects.map((p) => (
-								<div
-									key={p.id}
-									className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 transition ${
-										p.id === selectedProjectId
-											? "border-wisteria-accentStrong bg-wisteria-highlight"
-											: "border-wisteria-border bg-wisteria-panelStrong/60 hover:border-wisteria-borderStrong"
-									}`}
-									onClick={() => void selectProject(p.id)}
-								>
-									<div>
-										<div className="text-sm font-semibold text-wisteria-text">
-											{p.name}
-										</div>
-										<div className="text-xs text-wisteria-textMuted">
-											Chats: {chats.filter((c) => c.project_id === p.id).length}
-										</div>
-									</div>
-									<button
-										className="text-xs text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
-										onClick={(e) => {
-											e.stopPropagation();
-											void deleteProject(p.id);
-										}}
-									>
-										Delete
-									</button>
-								</div>
-							))}
-							{projects.length === 0 && (
-								<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-3 py-2 text-xs text-wisteria-textMuted">
-									No projects yet.
-								</div>
-							)}
-						</div>
-						<div className="mt-3 flex gap-2">
-							<input
-								className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
-								value={newProjectName}
-								onChange={(e) => setNewProjectName(e.target.value)}
-								placeholder="New project name"
-							/>
-							<button
-								onClick={() => void createProject()}
-								disabled={!newProjectName.trim()}
-								className="rounded-lg bg-wisteria-accent px-3 py-2 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
-							>
-								Add
-							</button>
-						</div>
-					</section>
-
-					{activeProject && (
+			<div className="flex flex-1 overflow-hidden">
+				<aside className="w-80 shrink-0 overflow-y-auto border-r border-wisteria-border bg-wisteria-panel/50 p-4">
+					<div className="flex flex-col gap-4">
 						<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
 							<div className="text-sm font-semibold text-wisteria-text">
-								System prompt
+								Projects
 							</div>
-							<textarea
-								className="mt-2 w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
-								value={systemPrompt}
-								onChange={(e) => setSystemPrompt(e.target.value)}
-								onBlur={() => void persistSystemPrompt()}
-								placeholder="Shared system prompt for all chats in this project"
-								rows={5}
-							/>
-							<button
-								className="mt-2 text-xs font-semibold text-wisteria-accentStrong underline-offset-2 hover:underline"
-								onClick={() => void persistSystemPrompt()}
-							>
-								Save prompt
-							</button>
-						</section>
-					)}
-
-					{activeProject && (
-						<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
-							<div className="text-sm font-semibold text-wisteria-text">
-								Model selection
-							</div>
-							<select
-								className="mt-2 w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
-								value={selectedModelId}
-								onChange={(e) => void persistModelSelection(e.target.value)}
-							>
-								<option value="">Pick a model…</option>
-								{models.map((m) => (
-									<option
-										key={`${m.provider}:${m.id}`}
-										value={`${m.provider}:${m.id}`}
-									>
-										[{m.provider}] {m.label}
-									</option>
-								))}
-							</select>
-							<div className="mt-2 text-xs text-wisteria-textMuted">
-								Ollama/LM Studio auto-detected. OpenRouter needs an API key.
-							</div>
-							<input
-								className="mt-2 w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
-								value={openRouterKey}
-								onChange={(e) => setOpenRouterKey(e.target.value)}
-								placeholder="OpenRouter API key"
-							/>
-							<button
-								className="mt-2 rounded-lg border border-wisteria-borderStrong px-3 py-2 text-sm font-semibold text-wisteria-text transition hover:border-wisteria-accentStrong disabled:opacity-60"
-								onClick={() => void saveOpenRouter()}
-								disabled={!openRouterKey.trim()}
-							>
-								Save key
-							</button>
-						</section>
-					)}
-				</aside>
-
-				<main className="flex flex-col gap-4">
-					<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
-						<div className="text-sm font-semibold text-wisteria-text">
-							Chats in project
-						</div>
-						<div className="mt-3 flex flex-wrap gap-2">
-							{chats
-								.filter((c) => c.project_id === selectedProjectId)
-								.map((c) => (
+							<div className="mt-3 space-y-2">
+								{projects.map((p) => (
 									<div
-										key={c.id}
-										className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-											c.id === selectedChatId
-												? "border-wisteria-accentStrong bg-wisteria-highlight text-wisteria-text"
-												: "border-wisteria-border bg-wisteria-panelStrong/60 text-wisteria-text hover:border-wisteria-borderStrong"
+										key={p.id}
+										className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 transition ${
+											p.id === selectedProjectId
+												? "border-wisteria-accentStrong bg-wisteria-highlight"
+												: "border-wisteria-border bg-wisteria-panelStrong/60 hover:border-wisteria-borderStrong"
 										}`}
-										onClick={() => void selectChat(c.id)}
+										onClick={() => void selectProject(p.id)}
 									>
-										<span>{c.name}</span>
+										<div className="min-w-0 flex-1">
+											<div className="text-sm font-semibold text-wisteria-text truncate">
+												{p.name}
+											</div>
+											<div className="text-xs text-wisteria-textMuted">
+												{chats.filter((c) => c.project_id === p.id).length} chat
+												{chats.filter((c) => c.project_id === p.id).length !== 1
+													? "s"
+													: ""}
+											</div>
+										</div>
 										<button
-											className="text-[11px] text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
+											className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
 											onClick={(e) => {
 												e.stopPropagation();
-												void deleteChat(c.id);
+												void deleteProject(p.id);
 											}}
 										>
 											Delete
 										</button>
 									</div>
 								))}
-							{selectedProjectId &&
-								chats.filter((c) => c.project_id === selectedProjectId)
-									.length === 0 && (
+								{projects.length === 0 && (
 									<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-3 py-2 text-xs text-wisteria-textMuted">
-										No chats for this project.
+										No projects yet.
 									</div>
 								)}
-						</div>
-						<div className="mt-3 flex gap-2">
-							<input
-								className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
-								value={newChatName}
-								onChange={(e) => setNewChatName(e.target.value)}
-								placeholder="New chat title"
-								disabled={!selectedProjectId}
-							/>
-							<button
-								onClick={() => void createChat()}
-								disabled={!newChatName.trim() || !selectedProjectId}
-								className="rounded-lg bg-wisteria-accent px-3 py-2 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
-							>
-								New chat
-							</button>
-						</div>
-					</section>
+							</div>
+							<div className="mt-3 flex gap-2">
+								<input
+									className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+									value={newProjectName}
+									onChange={(e) => setNewProjectName(e.target.value)}
+									placeholder="New project name"
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void createProject();
+										}
+									}}
+								/>
+								<button
+									onClick={() => void createProject()}
+									disabled={!newProjectName.trim()}
+									className="rounded-lg bg-wisteria-accent px-3 py-2 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
+								>
+									Add
+								</button>
+							</div>
+						</section>
 
-					<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
-						<div className="text-sm font-semibold text-wisteria-text">
-							Conversation
-						</div>
-						<div
-							className="mt-3 flex max-h-[55vh] flex-col gap-3 overflow-y-auto pr-1"
-							aria-live="polite"
-						>
+						<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
+							<div className="text-sm font-semibold text-wisteria-text">
+								Chats
+							</div>
+							<div className="mt-3 space-y-2">
+								{chats
+									.filter((c) => c.project_id === selectedProjectId)
+									.map((c) => (
+										<div
+											key={c.id}
+											className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 transition ${
+												c.id === selectedChatId
+													? "border-wisteria-accentStrong bg-wisteria-highlight"
+													: "border-wisteria-border bg-wisteria-panelStrong/60 hover:border-wisteria-borderStrong"
+											}`}
+											onClick={() => void selectChat(c.id)}
+										>
+											<div className="min-w-0 flex-1 truncate text-sm font-semibold text-wisteria-text">
+												{c.name}
+											</div>
+											<button
+												className="ml-2 shrink-0 text-xs text-wisteria-textSubtle hover:text-wisteria-danger transition-colors"
+												onClick={(e) => {
+													e.stopPropagation();
+													void deleteChat(c.id);
+												}}
+											>
+												Delete
+											</button>
+										</div>
+									))}
+								{selectedProjectId &&
+									chats.filter((c) => c.project_id === selectedProjectId)
+										.length === 0 && (
+										<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-3 py-2 text-xs text-wisteria-textMuted">
+											No chats for this project.
+										</div>
+									)}
+							</div>
+							<div className="mt-3 flex gap-2">
+								<input
+									className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+									value={newChatName}
+									onChange={(e) => setNewChatName(e.target.value)}
+									placeholder="New chat title"
+									disabled={!selectedProjectId}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && selectedProjectId) {
+											void createChat();
+										}
+									}}
+								/>
+								<button
+									onClick={() => void createChat()}
+									disabled={!newChatName.trim() || !selectedProjectId}
+									className="rounded-lg bg-wisteria-accent px-3 py-2 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
+								>
+									Add
+								</button>
+							</div>
+						</section>
+
+						{activeProject && (
+							<section className="rounded-xl border border-wisteria-border bg-wisteria-panel/80 p-4 shadow-inner shadow-black/20">
+								<div className="text-sm font-semibold text-wisteria-text">
+									System prompt
+								</div>
+								<textarea
+									className="mt-2 w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+									value={systemPrompt}
+									onChange={(e) => setSystemPrompt(e.target.value)}
+									onBlur={() => void persistSystemPrompt()}
+									placeholder="Shared system prompt for all chats in this project"
+									rows={4}
+								/>
+								<button
+									className="mt-2 text-xs font-semibold text-wisteria-accentStrong underline-offset-2 hover:underline"
+									onClick={() => void persistSystemPrompt()}
+								>
+									Save prompt
+								</button>
+							</section>
+						)}
+					</div>
+				</aside>
+
+				<main className="flex flex-1 flex-col overflow-hidden">
+					<div className="flex-1 overflow-y-auto p-6">
+						<div className="mx-auto max-w-4xl space-y-4">
+							{messages.length === 0 && (
+								<div className="flex h-full items-center justify-center">
+									<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-6 py-4 text-center text-sm text-wisteria-textMuted">
+										No messages yet. Start a conversation below.
+									</div>
+								</div>
+							)}
 							{messages.map((msg) => (
 								<div
 									key={msg.id}
@@ -579,7 +566,7 @@ function App() {
 										</span>
 									</div>
 									<div
-										className={`max-w-3xl whitespace-pre-wrap rounded-xl border px-4 py-3 text-sm leading-relaxed ${
+										className={`whitespace-pre-wrap rounded-xl border px-4 py-3 text-sm leading-relaxed ${
 											msg.role === "user"
 												? "border-wisteria-borderStrong bg-wisteria-bubbleUser"
 												: "border-wisteria-border bg-wisteria-panelStrong"
@@ -589,42 +576,75 @@ function App() {
 									</div>
 								</div>
 							))}
-							{messages.length === 0 && (
-								<div className="rounded-lg border border-dashed border-wisteria-borderStrong bg-wisteria-panelStrong/60 px-3 py-2 text-xs text-wisteria-textMuted">
-									No messages yet.
-								</div>
-							)}
 						</div>
+					</div>
 
-						<div className="mt-4 space-y-2 rounded-lg border border-wisteria-border bg-wisteria-panelStrong/80 p-3">
-							<label
-								htmlFor="chat-input"
-								className="sr-only"
-							>
-								Chat input
-							</label>
-							<textarea
-								id="chat-input"
-								ref={composerRef}
-								value={input}
-								onChange={(e) => setInput(e.target.value)}
-								onKeyDown={handleComposerKey}
-								placeholder="Type a message and hit Enter to send"
-								rows={3}
-								disabled={!selectedChatId || isSending}
-								className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong disabled:opacity-60"
-							/>
-							<div className="flex justify-end">
+					<div className="border-t border-wisteria-border bg-wisteria-panel/50 p-4">
+						<div className="mx-auto max-w-4xl space-y-3">
+							<div className="flex gap-3">
+								<select
+									className="shrink-0 rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-2 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+									value={selectedModelId}
+									onChange={(e) => void persistModelSelection(e.target.value)}
+								>
+									<option value="">Pick a model…</option>
+									{models.map((m) => (
+										<option
+											key={`${m.provider}:${m.id}`}
+											value={`${m.provider}:${m.id}`}
+										>
+											[{m.provider}] {m.label}
+										</option>
+									))}
+								</select>
+								<div className="flex-1">
+									<label
+										htmlFor="chat-input"
+										className="sr-only"
+									>
+										Chat input
+									</label>
+									<textarea
+										id="chat-input"
+										ref={composerRef}
+										value={input}
+										onChange={(e) => setInput(e.target.value)}
+										onKeyDown={handleComposerKey}
+										placeholder="Type a message and hit Enter to send"
+										rows={4}
+										disabled={!selectedChatId || isSending}
+										className="w-full rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-4 py-3 text-sm text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong disabled:opacity-60 resize-none"
+									/>
+								</div>
 								<button
 									onClick={() => void sendMessage()}
 									disabled={!input.trim() || isSending || !selectedChatId}
-									className="rounded-lg bg-wisteria-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
+									className="shrink-0 self-end rounded-lg bg-wisteria-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-wisteria-accentSoft disabled:opacity-60"
 								>
 									{isSending ? "Sending…" : "Send"}
 								</button>
 							</div>
+							{activeProject && (
+								<div className="flex items-center gap-2 text-xs text-wisteria-textMuted">
+									<span>OpenRouter API key:</span>
+									<input
+										className="flex-1 rounded-lg border border-wisteria-border bg-wisteria-panelStrong px-3 py-1.5 text-xs text-wisteria-text outline-none ring-1 ring-transparent transition focus:ring-wisteria-accentStrong"
+										value={openRouterKey}
+										onChange={(e) => setOpenRouterKey(e.target.value)}
+										placeholder="sk-..."
+										type="password"
+									/>
+									<button
+										className="rounded-lg border border-wisteria-borderStrong px-3 py-1.5 text-xs font-semibold text-wisteria-text transition hover:border-wisteria-accentStrong disabled:opacity-60"
+										onClick={() => void saveOpenRouter()}
+										disabled={!openRouterKey.trim()}
+									>
+										Save
+									</button>
+								</div>
+							)}
 						</div>
-					</section>
+					</div>
 				</main>
 			</div>
 		</div>
