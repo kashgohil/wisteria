@@ -1,22 +1,28 @@
 "use strict";
 const electron = require("electron");
-electron.contextBridge.exposeInMainWorld("ipcRenderer", {
-  on(...args) {
-    const [channel, listener] = args;
-    return electron.ipcRenderer.on(channel, (event, ...args2) => listener(event, ...args2));
+const api = {
+  projects: {
+    list: () => electron.ipcRenderer.invoke("projects:list"),
+    create: (name) => electron.ipcRenderer.invoke("projects:create", name),
+    update: (projectId, data) => electron.ipcRenderer.invoke("projects:update", projectId, data),
+    delete: (projectId) => electron.ipcRenderer.invoke("projects:delete", projectId)
   },
-  off(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.off(channel, ...omit);
+  chats: {
+    list: (projectId) => electron.ipcRenderer.invoke("chats:list", projectId),
+    create: (projectId, name) => electron.ipcRenderer.invoke("chats:create", projectId, name),
+    delete: (chatId) => electron.ipcRenderer.invoke("chats:delete", chatId)
   },
-  send(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.send(channel, ...omit);
+  messages: {
+    list: (chatId) => electron.ipcRenderer.invoke("messages:list", chatId),
+    append: (chatId, role, content) => electron.ipcRenderer.invoke("messages:append", chatId, role, content)
   },
-  invoke(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.invoke(channel, ...omit);
+  models: {
+    list: () => electron.ipcRenderer.invoke("models:list"),
+    send: (payload) => electron.ipcRenderer.invoke("models:send", payload)
+  },
+  keys: {
+    set: (key, value) => electron.ipcRenderer.invoke("keys:set", key, value),
+    get: (key) => electron.ipcRenderer.invoke("keys:get", key)
   }
-  // You can expose other APTs you need here.
-  // ...
-});
+};
+electron.contextBridge.exposeInMainWorld("wisteria", api);

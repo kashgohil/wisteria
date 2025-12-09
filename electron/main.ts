@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { closeDb } from "./db";
+import { registerIpcHandlers } from "./ipc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,7 +30,7 @@ let win: BrowserWindow | null;
 
 function createWindow() {
 	win = new BrowserWindow({
-		icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+		icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 		},
@@ -55,6 +57,7 @@ app.on("window-all-closed", () => {
 		app.quit();
 		win = null;
 	}
+	closeDb();
 });
 
 app.on("activate", () => {
@@ -66,3 +69,5 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(createWindow);
+
+registerIpcHandlers();

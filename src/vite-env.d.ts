@@ -1,1 +1,45 @@
 /// <reference types="vite/client" />
+
+import type { Chat, Message, Project } from "../electron/db";
+import type {
+	ChatModelRequest,
+	ChatModelResponse,
+} from "../electron/models/connectors";
+import type { ProjectUpdate } from "../electron/preload";
+
+declare global {
+	interface Window {
+		wisteria: {
+			projects: {
+				list: () => Promise<Project[]>;
+				create: (name: string) => Promise<Project>;
+				update: (
+					projectId: string,
+					data: ProjectUpdate,
+				) => Promise<Project | null>;
+				delete: (projectId: string) => Promise<boolean>;
+			};
+			chats: {
+				list: (projectId: string) => Promise<Chat[]>;
+				create: (projectId: string, name: string) => Promise<Chat>;
+				delete: (chatId: string) => Promise<boolean>;
+			};
+			messages: {
+				list: (chatId: string) => Promise<Message[]>;
+				append: (
+					chatId: string,
+					role: Message["role"],
+					content: string,
+				) => Promise<Message>;
+			};
+			models: {
+				list: () => Promise<{ id: string; label: string; provider: string }[]>;
+				send: (payload: ChatModelRequest) => Promise<ChatModelResponse>;
+			};
+			keys: {
+				set: (key: string, value: string) => Promise<boolean>;
+				get: (key: string) => Promise<string | null>;
+			};
+		};
+	}
+}

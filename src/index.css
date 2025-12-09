@@ -1,36 +1,35 @@
 :root {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #e5e7eb;
-  background-color: #0b1020;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	line-height: 1.5;
+	font-weight: 400;
+	color: #e5e7eb;
+	background-color: #0b1020;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: radial-gradient(circle at 20% 20%, #111827, transparent 25%),
-    radial-gradient(circle at 80% 0%, #1f2937, transparent 30%),
-    #0b1020;
+	margin: 0;
+	min-width: 320px;
+	min-height: 100vh;
+	background: radial-gradient(circle at 20% 20%, #111827, transparent 25%),
+		radial-gradient(circle at 80% 0%, #1f2937, transparent 30%), #0b1020;
 }
 
 a {
-  color: inherit;
+	color: inherit;
 }
 
 textarea,
 button {
-  font: inherit;
+	font: inherit;
 }
