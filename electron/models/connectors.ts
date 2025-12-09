@@ -10,11 +10,22 @@ export type ChatModelRequest = {
 	model: string;
 	messages: ChatMessage[];
 	apiKey?: string | null;
+	/**
+	 * Enable provider streaming mode. When true, callers should pass an
+	 * onDelta callback to receive partial tokens as they arrive.
+	 */
+	stream?: boolean;
+	/**
+	 * Optional identifier forwarded back to the renderer so it can correlate
+	 * streaming updates to the originating request.
+	 */
+	requestId?: string;
 };
 
 export type ChatModelResponse = {
 	content: string;
 	raw?: unknown;
+	requestId?: string;
 };
 
 const OLLAMA_URL = "http://localhost:11434";
@@ -101,60 +112,88 @@ export async function listLmStudioModels(): Promise<
 	}
 }
 
+type StreamCallbacks = {
+	onDelta?: (text: string) => void;
+};
+
 export async function sendToModel(
 	request: ChatModelRequest,
+	callbacks: StreamCallbacks = {},
 ): Promise<ChatModelResponse> {
 	switch (request.provider) {
 		case "ollama":
-			return sendOllama(request);
+			return sendOllama(request, callbacks);
 		case "lmstudio":
-			return sendLmStudio(request);
+			return sendLmStudio(request, callbacks);
 		case "openrouter":
-			return sendOpenRouter(request);
+			return sendOpenRouter(request, callbacks);
 		default:
 			throw new Error("Unsupported provider");
 	}
 }
 
-async function sendOllama(req: ChatModelRequest): Promise<ChatModelResponse> {
+async function sendOllama(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
 	const res = await fetch(`${OLLAMA_URL}/api/chat`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			model: req.model,
 			messages: req.messages,
-			stream: false,
+			stream: Boolean(req.stream),
 		}),
 	});
 	if (!res.ok) {
 		throw new Error(`Ollama error ${res.status}`);
 	}
+
+	if (req.stream) {
+		const { content, raw } = await readNdjsonStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
 	const data = (await res.json()) as { message?: { content?: string } };
-	return { content: data.message?.content ?? "", raw: data };
+	return {
+		content: data.message?.content ?? "",
+		raw: data,
+		requestId: req.requestId,
+	};
 }
 
-async function sendLmStudio(req: ChatModelRequest): Promise<ChatModelResponse> {
+async function sendLmStudio(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
 	const res = await fetch(`${LMSTUDIO_URL}/v1/chat/completions`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			model: req.model,
 			messages: req.messages,
-			stream: false,
+			stream: Boolean(req.stream),
 		}),
 	});
 	if (!res.ok) {
 		throw new Error(`LM Studio error ${res.status}`);
 	}
+
+	if (req.stream) {
+		const { content, raw } = await readSseStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
 	const data = (await res.json()) as {
 		choices?: { message?: { content?: string } }[];
 	};
 	const content = data.choices?.[0]?.message?.content ?? "";
-	return { content, raw: data };
+	return { content, raw: data, requestId: req.requestId };
 }
 
 async function sendOpenRouter(
 	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
 ): Promise<ChatModelResponse> {
 	if (!req.apiKey) {
 		throw new Error("OpenRouter API key missing");
@@ -168,14 +207,107 @@ async function sendOpenRouter(
 		body: JSON.stringify({
 			model: req.model,
 			messages: req.messages,
+			stream: Boolean(req.stream),
 		}),
 	});
 	if (!res.ok) {
 		throw new Error(`OpenRouter error ${res.status}`);
 	}
+
+	if (req.stream) {
+		const { content, raw } = await readSseStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
 	const data = (await res.json()) as {
 		choices?: { message?: { content?: string } }[];
 	};
 	const content = data.choices?.[0]?.message?.content ?? "";
-	return { content, raw: data };
+	return { content, raw: data, requestId: req.requestId };
+}
+
+async function readNdjsonStream(
+	res: Response,
+	onDelta?: (delta: string) => void,
+): Promise<{ content: string; raw: unknown[] }> {
+	const reader = res.body?.getReader();
+	if (!reader) throw new Error("No streaming body available");
+
+	const decoder = new TextDecoder();
+	let buffer = "";
+	let full = "";
+	const raw: unknown[] = [];
+
+	for (;;) {
+		const { value, done } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+
+		const lines = buffer.split("\n");
+		buffer = lines.pop() ?? "";
+
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed) continue;
+			try {
+				const json = JSON.parse(trimmed) as {
+					message?: { content?: string };
+				};
+				raw.push(json);
+				const delta = json.message?.content ?? "";
+				if (delta) {
+					full += delta;
+					onDelta?.(delta);
+				}
+			} catch (err) {
+				console.warn("Ollama stream parse issue", err);
+			}
+		}
+	}
+
+	return { content: full, raw };
+}
+
+async function readSseStream(
+	res: Response,
+	onDelta?: (delta: string) => void,
+): Promise<{ content: string; raw: unknown[] }> {
+	const reader = res.body?.getReader();
+	if (!reader) throw new Error("No streaming body available");
+
+	const decoder = new TextDecoder();
+	let buffer = "";
+	let full = "";
+	const raw: unknown[] = [];
+
+	for (;;) {
+		const { value, done } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+
+		const lines = buffer.split(/\r?\n/);
+		buffer = lines.pop() ?? "";
+
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed.startsWith("data:")) continue;
+			const payload = trimmed.slice(5).trim();
+			if (!payload || payload === "[DONE]") continue;
+			try {
+				const json = JSON.parse(payload) as {
+					choices?: { delta?: { content?: string } }[];
+				};
+				raw.push(json);
+				const delta = json.choices?.[0]?.delta?.content ?? "";
+				if (delta) {
+					full += delta;
+					onDelta?.(delta);
+				}
+			} catch (err) {
+				console.warn("SSE stream parse issue", err);
+			}
+		}
+	}
+
+	return { content: full, raw };
 }

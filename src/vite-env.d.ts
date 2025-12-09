@@ -35,6 +35,19 @@ declare global {
 			models: {
 				list: () => Promise<{ id: string; label: string; provider: string }[]>;
 				send: (payload: ChatModelRequest) => Promise<ChatModelResponse>;
+				onStreamChunk: (
+					handler: (payload: {
+						requestId: string;
+						delta: string;
+						content: string;
+					}) => void,
+				) => () => void;
+				onStreamDone: (
+					handler: (payload: { requestId: string; content: string }) => void,
+				) => () => void;
+				onStreamError: (
+					handler: (payload: { requestId: string; error: string }) => void,
+				) => () => void;
 			};
 			keys: {
 				set: (key: string, value: string) => Promise<boolean>;

@@ -46,6 +46,40 @@ const api = {
 			>,
 		send: (payload: ChatModelRequest) =>
 			ipcRenderer.invoke("models:send", payload) as Promise<ChatModelResponse>,
+		onStreamChunk: (
+			handler: (payload: {
+				requestId: string;
+				delta: string;
+				content: string;
+			}) => void,
+		) => {
+			const listener = (
+				_event: unknown,
+				payload: { requestId: string; delta: string; content: string },
+			) => handler(payload);
+			ipcRenderer.on("models:stream-chunk", listener);
+			return () => ipcRenderer.removeListener("models:stream-chunk", listener);
+		},
+		onStreamDone: (
+			handler: (payload: { requestId: string; content: string }) => void,
+		) => {
+			const listener = (
+				_event: unknown,
+				payload: { requestId: string; content: string },
+			) => handler(payload);
+			ipcRenderer.on("models:stream-done", listener);
+			return () => ipcRenderer.removeListener("models:stream-done", listener);
+		},
+		onStreamError: (
+			handler: (payload: { requestId: string; error: string }) => void,
+		) => {
+			const listener = (
+				_event: unknown,
+				payload: { requestId: string; error: string },
+			) => handler(payload);
+			ipcRenderer.on("models:stream-error", listener);
+			return () => ipcRenderer.removeListener("models:stream-error", listener);
+		},
 	},
 	keys: {
 		set: (key: string, value: string) =>

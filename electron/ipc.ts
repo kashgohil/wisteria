@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { randomUUID } from "node:crypto";
 import {
 	appendMessage,
 	createChat,
@@ -86,11 +87,48 @@ export function registerIpcHandlers() {
 		return [...ollama, ...lmstudio, ...openrouter];
 	});
 
-	ipcMain.handle("models:send", async (_event, payload: ChatModelRequest) => {
-		const apiKey =
-			payload.provider === "openrouter" ? readKey("openrouter_api_key") : null;
-		return sendToModel({ ...payload, apiKey });
-	});
+	ipcMain.handle(
+		"models:send",
+		async (event, payload: ChatModelRequest & { stream?: boolean }) => {
+			const apiKey =
+				payload.provider === "openrouter"
+					? readKey("openrouter_api_key")
+					: null;
+			const requestId = payload.requestId ?? randomUUID();
+
+			if (!payload.stream) {
+				return sendToModel({ ...payload, apiKey, requestId });
+			}
+
+			let lastContent = "";
+			try {
+				const response = await sendToModel(
+					{ ...payload, apiKey, requestId, stream: true },
+					{
+						onDelta: (delta) => {
+							lastContent += delta;
+							event.sender.send("models:stream-chunk", {
+								requestId,
+								delta,
+								content: lastContent,
+							});
+						},
+					},
+				);
+				event.sender.send("models:stream-done", {
+					requestId,
+					content: response.content,
+				});
+				return response;
+			} catch (err) {
+				event.sender.send("models:stream-error", {
+					requestId,
+					error: String(err),
+				});
+				throw err;
+			}
+		},
+	);
 
 	ipcMain.handle("keys:set", (_event, key: string, value: string) => {
 		saveKey(key, value);

@@ -30,6 +30,9 @@ function App() {
 	const [input, setInput] = useState("");
 	const [isSending, setIsSending] = useState(false);
 	const [openRouterKey, setOpenRouterKey] = useState("");
+	const streamMeta = useRef<
+		Record<string, { chatId: string; completed: boolean }>
+	>({});
 
 	const composerRef = useRef<HTMLTextAreaElement | null>(null);
 	const dragRegionStyle: CSSProperties & { WebkitAppRegion?: string } = {
@@ -42,6 +45,29 @@ function App() {
 
 	useEffect(() => {
 		void bootstrap();
+	}, []);
+
+	useEffect(() => {
+		const offChunk = window.wisteria.models.onStreamChunk((payload) => {
+			setStatus("Streaming…");
+			setMessages((prev) =>
+				prev.map((m) =>
+					m.id === payload.requestId ? { ...m, content: payload.content } : m,
+				),
+			);
+		});
+		const offDone = window.wisteria.models.onStreamDone((payload) => {
+			void finalizeAssistantMessage(payload.requestId, payload.content);
+		});
+		const offError = window.wisteria.models.onStreamError((payload) => {
+			void handleStreamError(payload.requestId, payload.error);
+		});
+		return () => {
+			offChunk();
+			offDone();
+			offError();
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const activeProject = useMemo(
@@ -206,32 +232,75 @@ function App() {
 			{ role: "user" as const, content: userMessage.content },
 		];
 
+		const requestId = crypto.randomUUID();
+		const placeholder: Message = {
+			id: requestId,
+			chat_id: selectedChatId,
+			role: "assistant",
+			content: "",
+			created_at: Date.now(),
+		};
+		streamMeta.current[requestId] = {
+			chatId: selectedChatId,
+			completed: false,
+		};
+		setMessages((prev) => [...prev, placeholder]);
+
 		try {
 			const response = await window.wisteria.models.send({
 				provider: provider as "ollama" | "lmstudio" | "openrouter",
 				model: modelId,
 				messages: history,
+				stream: true,
+				requestId,
 			});
-			const assistantMsg = await window.wisteria.messages.append(
-				selectedChatId,
-				"assistant",
-				response.content || "(empty response)",
-			);
-			setMessages((prev) => [...prev, assistantMsg]);
-			setStatus("Ready");
+			if (!streamMeta.current[requestId]?.completed) {
+				await finalizeAssistantMessage(requestId, response.content);
+			}
 		} catch (err) {
 			console.error(err);
-			setStatus("Failed to send");
-			const errorMsg = await window.wisteria.messages.append(
-				selectedChatId,
-				"assistant",
-				`(Error) ${String(err)}`,
-			);
-			setMessages((prev) => [...prev, errorMsg]);
+			if (!streamMeta.current[requestId]?.completed) {
+				await handleStreamError(requestId, String(err));
+			}
 		} finally {
-			setIsSending(false);
 			composerRef.current?.focus();
 		}
+	};
+
+	const finalizeAssistantMessage = async (
+		requestId: string,
+		content: string,
+	) => {
+		const meta = streamMeta.current[requestId];
+		if (!meta) return;
+		streamMeta.current[requestId] = { ...meta, completed: true };
+		const finalContent = content || "(empty response)";
+		const persisted = await window.wisteria.messages.append(
+			meta.chatId,
+			"assistant",
+			finalContent,
+		);
+		setMessages((prev) =>
+			prev.map((m) => (m.id === requestId ? persisted : m)),
+		);
+		setStatus("Ready");
+		setIsSending(false);
+		delete streamMeta.current[requestId];
+	};
+
+	const handleStreamError = async (requestId: string, error: string) => {
+		const meta = streamMeta.current[requestId];
+		if (!meta) return;
+		streamMeta.current[requestId] = { ...meta, completed: true };
+		const errorMsg = await window.wisteria.messages.append(
+			meta.chatId,
+			"assistant",
+			`(Error) ${error}`,
+		);
+		setMessages((prev) => prev.map((m) => (m.id === requestId ? errorMsg : m)));
+		setStatus("Failed to send");
+		setIsSending(false);
+		delete streamMeta.current[requestId];
 	};
 
 	const handleComposerKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
