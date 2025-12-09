@@ -33,11 +33,58 @@ type KeyValue = {
 
 let db: Database.Database | null = null;
 
+function migrateProjectsTable(database: Database.Database) {
+	// Check if projects table exists
+	const tableExists = database
+		.prepare(
+			"SELECT name FROM sqlite_master WHERE type='table' AND name='projects'",
+		)
+		.get() as { name: string } | undefined;
+
+	if (!tableExists) {
+		// Table doesn't exist yet, will be created below
+		return;
+	}
+
+	// Check if old columns exist
+	const tableInfo = database
+		.prepare("PRAGMA table_info(projects)")
+		.all() as Array<{ name: string; type: string }>;
+
+	const hasOldColumns = tableInfo.some(
+		(col) => col.name === "model_provider" || col.name === "model_id",
+	);
+
+	if (hasOldColumns) {
+		// Migrate: create new table, copy data, drop old, rename new
+		// Temporarily disable foreign keys for the migration
+		database.pragma("foreign_keys = OFF");
+		database.exec(`
+			CREATE TABLE projects_new (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				system_prompt TEXT NOT NULL DEFAULT '',
+				created_at INTEGER NOT NULL
+			);
+			INSERT INTO projects_new (id, name, system_prompt, created_at)
+			SELECT id, name, system_prompt, created_at FROM projects;
+			DROP TABLE projects;
+			ALTER TABLE projects_new RENAME TO projects;
+		`);
+		database.pragma("foreign_keys = ON");
+	}
+}
+
 function ensureDb() {
 	if (db) return db;
 	const dbPath = path.join(app.getPath("userData"), "wisteria.db");
 	db = new Database(dbPath);
 	db.pragma("journal_mode = WAL");
+	db.pragma("foreign_keys = ON");
+
+	// Run migration before creating tables
+	migrateProjectsTable(db);
+
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS projects (
 			id TEXT PRIMARY KEY,
