@@ -1,3 +1,4 @@
+import "./shim"; // Ensure CommonJS globals exist for native deps
 import Database from "better-sqlite3";
 import { app } from "electron";
 import { randomUUID } from "node:crypto";

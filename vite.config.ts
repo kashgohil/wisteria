@@ -18,6 +18,14 @@ export default defineConfig({
 			main: {
 				// Shortcut of `build.lib.entry`.
 				entry: "electron/main.ts",
+				// Keep native addon out of the bundle so better-sqlite3 can load
+				vite: {
+					build: {
+						rollupOptions: {
+							external: ["better-sqlite3"],
+						},
+					},
+				},
 			},
 			preload: {
 				// Shortcut of `build.rollupOptions.input`.

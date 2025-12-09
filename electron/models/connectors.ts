@@ -20,12 +20,36 @@ export type ChatModelResponse = {
 const OLLAMA_URL = "http://localhost:11434";
 const LMSTUDIO_URL = "http://localhost:1234";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
+const REQUEST_TIMEOUT_MS = 2000;
+
+async function fetchWithTimeout(
+	url: string,
+	options: RequestInit = {},
+): Promise<Response> {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+	try {
+		return await fetch(url, { ...options, signal: controller.signal });
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
+function logConnectionIssue(label: string, err: unknown) {
+	const code = (err as { code?: string })?.code;
+	if (code === "ECONNREFUSED") {
+		console.info(`${label} not reachable on localhost`);
+		return;
+	}
+	// Reduce noise while still surfacing unexpected errors
+	console.warn(`${label} request issue`, err);
+}
 
 export async function listOllamaModels(): Promise<
 	{ id: string; label: string; provider: ModelProvider }[]
 > {
 	try {
-		const res = await fetch(`${OLLAMA_URL}/api/tags`);
+		const res = await fetchWithTimeout(`${OLLAMA_URL}/api/tags`);
 		if (!res.ok) throw new Error(`Ollama responded ${res.status}`);
 		const data = (await res.json()) as { models?: { name: string }[] };
 		return (data.models ?? []).map((m) => ({
@@ -34,7 +58,7 @@ export async function listOllamaModels(): Promise<
 			provider: "ollama",
 		}));
 	} catch (err) {
-		console.warn("Ollama list error", err);
+		logConnectionIssue("Ollama list", err);
 		return [];
 	}
 }
@@ -43,7 +67,7 @@ export async function listLmStudioModels(): Promise<
 	{ id: string; label: string; provider: ModelProvider }[]
 > {
 	try {
-		const res = await fetch(`${LMSTUDIO_URL}/v1/models`);
+		const res = await fetchWithTimeout(`${LMSTUDIO_URL}/v1/models`);
 		if (!res.ok) throw new Error(`LM Studio responded ${res.status}`);
 		const data = (await res.json()) as { data?: { id: string }[] };
 		return (data.data ?? []).map((m) => ({
@@ -52,7 +76,7 @@ export async function listLmStudioModels(): Promise<
 			provider: "lmstudio",
 		}));
 	} catch (err) {
-		console.warn("LM Studio list error", err);
+		logConnectionIssue("LM Studio list", err);
 		return [];
 	}
 }
