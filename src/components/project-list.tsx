@@ -167,6 +167,8 @@ export function ProjectList({
 							<Input
 								id="project-name"
 								value={projectName}
+								variant="outlined"
+								className="text-sm!"
 								onChange={(e) => setProjectName(e.target.value)}
 								placeholder="Enter project name"
 								onKeyDown={(e) => {
@@ -186,7 +188,9 @@ export function ProjectList({
 							</label>
 							<Textarea
 								id="project-system-prompt"
-								className="w-full"
+								size="default"
+								variant="outlined"
+								className="text-sm!"
 								value={systemPrompt}
 								onChange={(e) => setSystemPrompt(e.target.value)}
 								placeholder="Optional system prompt for all chats in this project"
