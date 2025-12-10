@@ -5,6 +5,14 @@ export type ProviderId =
 	| "openai"
 	| "anthropic";
 
+export const PROVIDER_NAMES: Record<ProviderId, string> = {
+	ollama: "Ollama",
+	lmstudio: "LM Studio",
+	openrouter: "OpenRouter",
+	openai: "OpenAI",
+	anthropic: "Anthropic",
+};
+
 export type ProviderKind = "local" | "online";
 
 export type ProviderMeta = {
@@ -21,9 +29,9 @@ export const PROVIDERS: ProviderMeta[] = [
 	{ id: "anthropic", label: "Anthropic", kind: "online" },
 ];
 
-export const LOCAL_PROVIDERS = PROVIDERS.filter(
-	(p) => p.kind === "local",
-).map((p) => p.id);
+export const LOCAL_PROVIDERS = PROVIDERS.filter((p) => p.kind === "local").map(
+	(p) => p.id,
+);
 
 export const ONLINE_PROVIDERS = PROVIDERS.filter(
 	(p) => p.kind === "online",
@@ -36,4 +44,3 @@ export const PROVIDER_KEY_MAP: Record<ProviderId, string | null> = {
 	openai: "openai_api_key",
 	anthropic: "anthropic_api_key",
 };
-

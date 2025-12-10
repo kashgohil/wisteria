@@ -5,7 +5,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { ProviderId } from "../../shared/providers";
+import { PROVIDER_NAMES, type ProviderId } from "../../shared/providers";
 
 type ProviderSelectorProps = {
 	providers: ProviderId[];
@@ -33,7 +33,7 @@ export function ProviderSelector({
 						value={provider}
 						className="text-sm! p-2"
 					>
-						{provider}
+						{PROVIDER_NAMES[provider]}
 					</SelectItem>
 				))}
 			</SelectContent>
