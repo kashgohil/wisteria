@@ -551,7 +551,7 @@ function App() {
 				/>
 
 				<main className="flex-1 border rounded-lg bg-background overflow-y-auto relative">
-					<div className="overflow-y-auto p-8">
+					<div className="overflow-y-auto p-8 h-full pb-40">
 						<div className="mx-auto max-w-3xl space-y-6">
 							{messages.length === 0 && (
 								<div className="flex h-full items-center justify-center">
@@ -570,7 +570,7 @@ function App() {
 									<div
 										className={`whitespace-pre-wrap rounded-lg px-4 text-sm leading-relaxed ${
 											msg.role === "user"
-												? "bg-[var(--color-wisteria-bubbleUser)] max-w-[80%] px-4 py-3"
+												? "bg-wisteria-bubbleUser max-w-[80%] px-4 py-3"
 												: "w-full"
 										}`}
 									>
@@ -581,8 +581,8 @@ function App() {
 						</div>
 					</div>
 
-					<div className="sticky bottom-0 left-0 right-0 px-5 pb-5">
-						<div className="mx-auto max-w-4xl space-y-4 backdrop-blur-2xl border bg-[var(--color-wisteria-bubbleUser)] rounded-lg flex flex-col px-4 py-3">
+					<div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
+						<div className="mx-auto max-w-4xl space-y-4 backdrop-blur-2xl border bg-wisteria-bubbleUser rounded-lg flex flex-col px-4 py-3">
 							<Textarea
 								id="chat-input"
 								ref={composerRef}
