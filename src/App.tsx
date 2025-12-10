@@ -570,10 +570,11 @@ function App() {
 				<main
 					className="flex-1 border rounded-lg bg-background overflow-y-auto relative"
 					style={{
-						backgroundImage:
+						backgroundImage: `url(${
 							theme === "dark"
-								? "url(/background-dark.png)"
-								: "url(/background.png)",
+								? `${import.meta.env.BASE_URL}background-dark.png`
+								: `${import.meta.env.BASE_URL}background.png`
+						})`,
 						backgroundSize: "cover",
 						backgroundPosition: "center",
 						backgroundRepeat: "no-repeat",
