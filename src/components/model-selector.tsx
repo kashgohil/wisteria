@@ -25,15 +25,10 @@ export function ModelSelector({
 		const input = pricing.input ?? pricing.prompt;
 		const output = pricing.output ?? pricing.completion;
 
-		let pricingString = "";
-		if (input) {
-			pricingString += `${input} input / `;
-		}
-		if (output) {
-			pricingString += `${output} output`;
-		}
+		const inputPricing = input ? `${input}/MToken input` : "";
+		const outputPricing = output ? `${output}/MToken output` : "";
 
-		return pricingString;
+		return [inputPricing, outputPricing].filter(Boolean).join(" | ");
 	};
 
 	return (
