@@ -332,3 +332,183 @@ button {
 	position: relative;
 	z-index: 2;
 }
+
+/* Markdown content styles */
+.markdown-content {
+	@apply text-foreground;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+	@apply font-semibold mt-6 mb-4;
+	color: var(--color-wisteria-text);
+}
+
+.markdown-content h1 {
+	@apply text-2xl;
+}
+
+.markdown-content h2 {
+	@apply text-xl;
+}
+
+.markdown-content h3 {
+	@apply text-lg;
+}
+
+.markdown-content p {
+	@apply mb-4;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+	@apply mb-4 ml-6;
+}
+
+.markdown-content ul {
+	@apply list-disc;
+}
+
+.markdown-content ol {
+	@apply list-decimal;
+}
+
+.markdown-content li {
+	@apply mb-2;
+}
+
+.markdown-content blockquote {
+	@apply border-l-4 pl-4 py-2 mb-4 italic;
+	border-color: var(--color-wisteria-accent);
+	background-color: var(--color-wisteria-highlight);
+	border-radius: 4px;
+}
+
+.markdown-content code {
+	@apply px-1.5 py-0.5 rounded text-sm font-mono;
+	background-color: var(--color-wisteria-highlight);
+	color: var(--color-wisteria-accent);
+}
+
+.markdown-content pre {
+	@apply p-4 rounded-lg mb-4 overflow-x-auto;
+	background-color: var(--color-wisteria-panelStrong);
+	border: 1px solid var(--color-wisteria-border);
+}
+
+.markdown-content pre code {
+	@apply p-0 bg-transparent;
+	color: inherit;
+}
+
+.markdown-content a {
+	@apply underline;
+	color: var(--color-wisteria-accent);
+}
+
+.markdown-content a:hover {
+	color: var(--color-wisteria-accentStrong);
+}
+
+.markdown-content table {
+	@apply w-full border-collapse mb-4;
+	border: 1px solid var(--color-wisteria-border);
+}
+
+.markdown-content th,
+.markdown-content td {
+	@apply px-4 py-2 border;
+	border-color: var(--color-wisteria-border);
+}
+
+.markdown-content th {
+	@apply font-semibold;
+	background-color: var(--color-wisteria-highlight);
+}
+
+.markdown-content hr {
+	@apply my-6 border-0;
+	border-top: 1px solid var(--color-wisteria-border);
+}
+
+/* Highlight.js code block styles */
+.markdown-content pre {
+	position: relative;
+}
+
+.markdown-content pre code.hljs {
+	@apply p-0 bg-transparent;
+	display: block;
+	overflow-x: auto;
+	padding: 1em;
+}
+
+/* Light theme highlight.js styles */
+:root[data-theme="light"] .markdown-content pre code.hljs {
+	background: var(--color-wisteria-panelStrong);
+	color: #24292e;
+}
+
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-comment,
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-quote {
+	color: #6a737d;
+}
+
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-keyword,
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-selector-tag,
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-type {
+	color: #d73a49;
+}
+
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-string,
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-literal,
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-number {
+	color: #032f62;
+}
+
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-title,
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-section {
+	color: #6f42c1;
+}
+
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-function,
+:root[data-theme="light"] .markdown-content pre code.hljs .hljs-params {
+	color: #e36209;
+}
+
+/* Dark theme highlight.js styles */
+:root[data-theme="dark"] .markdown-content pre code.hljs {
+	background: var(--color-wisteria-panelStrong);
+	color: #e1e4e8;
+}
+
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-comment,
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-quote {
+	color: #6a737d;
+}
+
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-keyword,
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-selector-tag,
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-type {
+	color: #f97583;
+}
+
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-string,
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-literal,
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-number {
+	color: #9ecbff;
+}
+
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-title,
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-section {
+	color: #b392f0;
+}
+
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-function,
+:root[data-theme="dark"] .markdown-content pre code.hljs .hljs-params {
+	color: #ffab70;
+}

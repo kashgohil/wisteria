@@ -49,7 +49,7 @@ export function AppSidebar({
 	onCreateChat,
 }: AppSidebarProps) {
 	return (
-		<aside className="shrink-0 overflow-y-auto max-w-full md:max-w-1/6">
+		<aside className="shrink-0 overflow-y-auto w-full max-w-full md:max-w-1/6">
 			<div className="flex flex-col gap-5">
 				<ProjectList
 					projects={projects}

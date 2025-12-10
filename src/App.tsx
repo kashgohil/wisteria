@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
+import remarkGfm from "remark-gfm";
 import "./index.css";
 
 type Project = Awaited<
@@ -568,13 +571,25 @@ function App() {
 									}`}
 								>
 									<div
-										className={`whitespace-pre-wrap rounded-lg px-4 text-sm leading-relaxed ${
+										className={`rounded-lg px-4 py-3 text-sm leading-relaxed ${
 											msg.role === "user"
-												? "bg-wisteria-bubbleUser max-w-[80%] px-4 py-3"
+												? "bg-wisteria-bubbleUser max-w-[80%] whitespace-pre-wrap"
+												: msg.role === "assistant"
+												? "w-full markdown-content"
 												: "w-full"
 										}`}
 									>
-										{msg.content}
+										{msg.role === "assistant" ? (
+											<ReactMarkdown
+												key={`${msg.id}-${msg.content.length}`}
+												remarkPlugins={[remarkGfm]}
+												rehypePlugins={[rehypeHighlight]}
+											>
+												{msg.content || ""}
+											</ReactMarkdown>
+										) : (
+											msg.content
+										)}
 									</div>
 								</div>
 							))}

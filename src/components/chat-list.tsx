@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreVertical, Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 type Chat = Awaited<ReturnType<typeof window.wisteria.chats.list>>[number];
 
@@ -54,41 +48,22 @@ export function ChatList({
 						className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
 							c.id === selectedChatId ? "bg-accent" : "hover:bg-muted/50"
 						}`}
+						onClick={() => void onSelectChat(c.id)}
 					>
-						<div
-							className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
-							onClick={() => void onSelectChat(c.id)}
-						>
+						<div className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
 							{c.name}
 						</div>
-						<div className="shrink-0">
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button
-										variant="ghost"
-										size="icon"
-										className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity"
-										onPointerDown={(e) => e.stopPropagation()}
-										onClick={(e) => e.stopPropagation()}
-									>
-										<MoreVertical className="h-4 w-4" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent
-									align="end"
-									sideOffset={4}
-								>
-									<DropdownMenuItem
-										className="cursor-pointer"
-										onClick={() => {
-											void onDeleteChat(c.id);
-										}}
-									>
-										Delete
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						</div>
+						<Button
+							size="sm"
+							variant="ghost"
+							className="ml-2 shrink-0 h-4 w-4 p-0 text-xs text-muted-foreground hidden group-hover:block hover:text-destructive transition-opacity"
+							onClick={(e) => {
+								e.stopPropagation();
+								void onDeleteChat(c.id);
+							}}
+						>
+							<Trash2 className="h-2 w-2" />
+						</Button>
 					</div>
 				))}
 				{filteredChats.length === 0 && (
