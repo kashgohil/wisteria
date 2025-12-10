@@ -74,7 +74,7 @@ export function ProjectList({
 	return (
 		<>
 			<section className="rounded-lg p-4">
-				<div className="flex items-center justify-between mb-4">
+				<div className="flex items-center justify-between mb-2">
 					<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 						Projects
 					</div>
@@ -87,24 +87,20 @@ export function ProjectList({
 					</Button>
 				</div>
 				<div className="space-y-1.5">
-					<div
-						className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
-							selectedProjectId === null ? "bg-accent" : "hover:bg-muted/50"
-						}`}
-						onClick={() => void onSelectProject(null)}
-					>
-						<div className="min-w-0 flex-1">
-							<div className="text-sm font-medium text-foreground truncate">
-								Standalone Chats
-							</div>
-							<div className="text-xs text-muted-foreground mt-0.5">
-								{chats.filter((c) => c.project_id === null).length} chat
-								{chats.filter((c) => c.project_id === null).length !== 1
-									? "s"
-									: ""}
+					{selectedProjectId && (
+						<div
+							className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
+								selectedProjectId === null ? "bg-accent" : "hover:bg-muted/50"
+							}`}
+							onClick={() => void onSelectProject(null)}
+						>
+							<div className="min-w-0 flex-1">
+								<div className="text-sm font-medium text-foreground truncate">
+									Back to standalone chats
+								</div>
 							</div>
 						</div>
-					</div>
+					)}
 					{projects.map((p) => (
 						<div
 							key={p.id}

@@ -34,7 +34,7 @@ export function ChatList({
 
 	return (
 		<section className="rounded-lg p-4">
-			<div className="flex items-center justify-between mb-4">
+			<div className="flex items-center justify-between mb-2">
 				<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 					Chats
 				</div>

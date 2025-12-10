@@ -1,7 +1,7 @@
 import { ChatList } from "@/components/chat-list";
 import { ProjectList } from "@/components/project-list";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Moon, Sun } from "lucide-react";
 
 type Project = Awaited<
 	ReturnType<typeof window.wisteria.projects.list>
@@ -38,9 +38,6 @@ export function AppSidebar({
 	chats,
 	selectedProjectId,
 	selectedChatId,
-	activeProject,
-	systemPrompt,
-	setSystemPrompt,
 	theme,
 	setTheme,
 	formattedStatus,
@@ -50,7 +47,6 @@ export function AppSidebar({
 	onSelectChat,
 	onDeleteChat,
 	onCreateChat,
-	onPersistSystemPrompt,
 }: AppSidebarProps) {
 	return (
 		<aside className="shrink-0 overflow-y-auto max-w-full md:max-w-1/6">
@@ -73,29 +69,6 @@ export function AppSidebar({
 					onCreateChat={onCreateChat}
 				/>
 
-				{activeProject && (
-					<section className="rounded-lg border bg-card p-4">
-						<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-							System prompt
-						</div>
-						<Textarea
-							className="w-full text-sm"
-							value={systemPrompt}
-							onChange={(e) => setSystemPrompt(e.target.value)}
-							onBlur={() => void onPersistSystemPrompt()}
-							placeholder="Shared system prompt for all chats in this project"
-							rows={4}
-						/>
-						<Button
-							variant="link"
-							size="sm"
-							className="mt-2 h-7 text-xs font-medium"
-							onClick={() => void onPersistSystemPrompt()}
-						>
-							Save prompt
-						</Button>
-					</section>
-				)}
 				<div className="flex items-center gap-3">
 					<Button
 						type="button"
@@ -107,7 +80,7 @@ export function AppSidebar({
 						}
 						className="h-8 w-8 p-0"
 					>
-						{theme === "light" ? "🌙" : "☀️"}
+						{theme === "light" ? <Moon /> : <Sun />}
 					</Button>
 					<div className="rounded-md border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
 						{formattedStatus}
