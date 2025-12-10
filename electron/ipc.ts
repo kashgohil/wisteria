@@ -6,11 +6,13 @@ import {
 	createProject,
 	deleteChat,
 	deleteProject,
+	listAllChats,
 	listChats,
 	listMessages,
 	listProjects,
 	readKey,
 	saveKey,
+	updateChat,
 	updateProject,
 } from "./db";
 import {
@@ -39,12 +41,23 @@ export function registerIpcHandlers() {
 		return true;
 	});
 
-	ipcMain.handle("chats:list", (_event, projectId: string) =>
+	ipcMain.handle("chats:list", (_event, projectId: string | null = null) =>
 		listChats(projectId),
 	);
 
-	ipcMain.handle("chats:create", (_event, projectId: string, name: string) =>
-		createChat(projectId, name),
+	ipcMain.handle("chats:listAll", () => listAllChats());
+
+	ipcMain.handle(
+		"chats:create",
+		(_event, projectId: string | null, name: string) =>
+			createChat(projectId, name),
+	);
+
+	ipcMain.handle(
+		"chats:update",
+		(_event, chatId: string, data: Parameters<typeof updateChat>[1]) => {
+			return updateChat(chatId, data);
+		},
 	);
 
 	ipcMain.handle("chats:delete", (_event, chatId: string) => {

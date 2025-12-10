@@ -1,13 +1,7 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { ModelSelector } from "@/components/model-selector";
+import { ProviderSelector } from "@/components/provider-selector";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,9 +20,40 @@ type Message = Awaited<
 type ModelOption = { id: string; label: string; provider: string };
 type ThemeMode = "light" | "dark";
 
+// Temporary chat type (not persisted in DB)
+type TemporaryChat = {
+	id: string;
+	project_id: string | null;
+	name: string;
+	created_at: number;
+};
+
+// Generate a chat name from the first message
+function generateChatName(message: string): string {
+	const trimmed = message.trim();
+	if (!trimmed) return "New Chat";
+
+	// Take first 50 characters, or up to the first newline/question mark
+	const maxLength = 50;
+	let name = trimmed.split(/[\n?]/)[0].trim();
+
+	if (name.length > maxLength) {
+		name = name.substring(0, maxLength).trim();
+		// Try to cut at a word boundary
+		const lastSpace = name.lastIndexOf(" ");
+		if (lastSpace > maxLength * 0.7) {
+			name = name.substring(0, lastSpace);
+		}
+		name += "...";
+	}
+
+	return name || "New Chat";
+}
+
 function App() {
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [chats, setChats] = useState<Chat[]>([]);
+	const [temporaryChats, setTemporaryChats] = useState<TemporaryChat[]>([]);
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [models, setModels] = useState<ModelOption[]>([]);
 
@@ -37,14 +62,12 @@ function App() {
 	);
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
-	const [newChatName, setNewChatName] = useState("");
 	const [systemPrompt, setSystemPrompt] = useState("");
 	const [selectedProvider, setSelectedProvider] = useState("ollama");
 	const [selectedModelId, setSelectedModelId] = useState("");
 	const [status, setStatus] = useState("Ready");
 	const [input, setInput] = useState("");
 	const [isSending, setIsSending] = useState(false);
-	const [openRouterKey, setOpenRouterKey] = useState("");
 	const [theme, setTheme] = useState<ThemeMode>("light");
 	const streamMeta = useRef<
 		Record<string, { chatId: string; completed: boolean }>
@@ -124,17 +147,32 @@ function App() {
 
 	const bootstrap = async () => {
 		setStatus("Loading…");
-		const [proj, modelList, savedKey] = await Promise.all([
+		const [proj, modelList, allChats] = await Promise.all([
 			window.wisteria.projects.list(),
 			window.wisteria.models.list(),
-			window.wisteria.keys.get("openrouter_api_key"),
+			window.wisteria.chats.listAll(),
 		]);
 		setProjects(proj);
 		setModels(modelList);
-		if (savedKey) setOpenRouterKey(savedKey);
-		if (proj.length > 0) {
+		setChats(allChats);
+		if (allChats.length > 0) {
+			// If there are chats, select the first one (could be standalone or project chat)
+			await selectChat(allChats[0].id);
+			// Set the project if the chat belongs to one
+			if (allChats[0].project_id) {
+				setSelectedProjectId(allChats[0].project_id);
+				const projForChat = proj.find((p) => p.id === allChats[0].project_id);
+				if (projForChat) {
+					setSystemPrompt(projForChat.system_prompt ?? "");
+				}
+			} else {
+				setSelectedProjectId(null);
+				setSystemPrompt("");
+			}
+		} else if (proj.length > 0) {
 			await selectProject(proj[0].id);
 		} else {
+			setSelectedProjectId(null);
 			setStatus("Ready");
 		}
 	};
@@ -142,20 +180,39 @@ function App() {
 	const refreshProjects = async (selectId?: string | null) => {
 		const proj = await window.wisteria.projects.list();
 		setProjects(proj);
+		const allChats = await window.wisteria.chats.listAll();
+		setChats(allChats);
 		const target = selectId ?? selectedProjectId ?? proj[0]?.id ?? null;
 		if (target) {
 			await selectProject(target);
+		} else if (allChats.length > 0) {
+			// If no project selected but there are chats, select the first one
+			await selectChat(allChats[0].id);
+			if (allChats[0].project_id) {
+				setSelectedProjectId(allChats[0].project_id);
+				const projForChat = proj.find((p) => p.id === allChats[0].project_id);
+				if (projForChat) {
+					setSystemPrompt(projForChat.system_prompt ?? "");
+				}
+			} else {
+				setSelectedProjectId(null);
+				setSystemPrompt("");
+			}
 		}
 	};
 
-	const selectProject = async (projectId: string) => {
+	const selectProject = async (projectId: string | null) => {
 		setSelectedProjectId(projectId);
-		const list = projects.length
-			? projects
-			: await window.wisteria.projects.list();
-		const proj = list.find((p) => p.id === projectId);
-		if (proj) {
-			setSystemPrompt(proj.system_prompt ?? "");
+		if (projectId) {
+			const list = projects.length
+				? projects
+				: await window.wisteria.projects.list();
+			const proj = list.find((p) => p.id === projectId);
+			if (proj) {
+				setSystemPrompt(proj.system_prompt ?? "");
+			}
+		} else {
+			setSystemPrompt("");
 		}
 		const chatList = await window.wisteria.chats.list(projectId);
 		setChats(chatList);
@@ -207,30 +264,118 @@ function App() {
 
 	const selectChat = async (chatId: string) => {
 		setSelectedChatId(chatId);
+
+		// Check if it's a temporary chat
+		const tempChat = temporaryChats.find((c) => c.id === chatId);
+		if (tempChat) {
+			setMessages([]);
+			if (tempChat.project_id) {
+				setSelectedProjectId(tempChat.project_id);
+				const proj = projects.find((p) => p.id === tempChat.project_id);
+				if (proj) {
+					setSystemPrompt(proj.system_prompt ?? "");
+				}
+			} else {
+				setSelectedProjectId(null);
+				setSystemPrompt("");
+			}
+			return;
+		}
+
+		// Regular chat - load messages
 		const msgs = await window.wisteria.messages.list(chatId);
 		setMessages(msgs);
+		// Update selected project based on the chat
+		const chat = chats.find((c) => c.id === chatId);
+		if (chat) {
+			if (chat.project_id) {
+				setSelectedProjectId(chat.project_id);
+				const proj = projects.find((p) => p.id === chat.project_id);
+				if (proj) {
+					setSystemPrompt(proj.system_prompt ?? "");
+				}
+			} else {
+				setSelectedProjectId(null);
+				setSystemPrompt("");
+			}
+		}
 	};
 
 	const createChat = async () => {
-		if (!selectedProjectId) return;
-		const name = newChatName.trim();
-		if (!name) return;
-		setStatus("Creating chat…");
-		const chat = await window.wisteria.chats.create(selectedProjectId, name);
-		setNewChatName("");
-		const chatList = await window.wisteria.chats.list(selectedProjectId);
-		setChats(chatList);
-		await selectChat(chat.id);
+		// Create a temporary chat (not persisted yet)
+		const tempChat: TemporaryChat = {
+			id: crypto.randomUUID(),
+			project_id: selectedProjectId,
+			name: "New Chat",
+			created_at: Date.now(),
+		};
+		setTemporaryChats((prev) => [...prev, tempChat]);
+		setSelectedChatId(tempChat.id);
+		setMessages([]);
 		setStatus("Ready");
 	};
 
+	const persistChat = async (chatId: string, name: string) => {
+		// Create the chat in the database
+		const chat = await window.wisteria.chats.create(selectedProjectId, name);
+		// Remove from temporary chats
+		setTemporaryChats((prev) => prev.filter((c) => c.id !== chatId));
+		// Refresh chats list
+		const allChats = await window.wisteria.chats.listAll();
+		setChats(allChats);
+		// Update selected chat ID to the persisted chat
+		setSelectedChatId(chat.id);
+		return chat.id;
+	};
+
 	const deleteChat = async (chatId: string) => {
+		// Check if it's a temporary chat
+		const isTemporaryChat = temporaryChats.some((c) => c.id === chatId);
+		if (isTemporaryChat) {
+			setTemporaryChats((prev) => prev.filter((c) => c.id !== chatId));
+			// Select another chat if available
+			const remainingTempChats = temporaryChats.filter((c) => c.id !== chatId);
+			const allChats = await window.wisteria.chats.listAll();
+			if (remainingTempChats.length > 0) {
+				await selectChat(remainingTempChats[0].id);
+			} else if (allChats.length > 0) {
+				await selectChat(allChats[0].id);
+				if (allChats[0].project_id) {
+					setSelectedProjectId(allChats[0].project_id);
+					const proj = projects.find((p) => p.id === allChats[0].project_id);
+					if (proj) {
+						setSystemPrompt(proj.system_prompt ?? "");
+					}
+				} else {
+					setSelectedProjectId(null);
+					setSystemPrompt("");
+				}
+			} else {
+				setSelectedChatId(null);
+				setMessages([]);
+			}
+			return;
+		}
+
+		// Regular chat - delete from database
 		await window.wisteria.chats.delete(chatId);
-		if (!selectedProjectId) return;
-		const chatList = await window.wisteria.chats.list(selectedProjectId);
-		setChats(chatList);
-		if (chatList.length > 0) {
-			await selectChat(chatList[0].id);
+		const allChats = await window.wisteria.chats.listAll();
+		setChats(allChats);
+		if (allChats.length > 0) {
+			await selectChat(allChats[0].id);
+			// Update selected project if the chat belongs to one
+			if (allChats[0].project_id) {
+				setSelectedProjectId(allChats[0].project_id);
+				const proj = projects.find((p) => p.id === allChats[0].project_id);
+				if (proj) {
+					setSystemPrompt(proj.system_prompt ?? "");
+				}
+			} else {
+				setSelectedProjectId(null);
+				setSystemPrompt("");
+			}
+		} else if (temporaryChats.length > 0) {
+			await selectChat(temporaryChats[0].id);
 		} else {
 			setSelectedChatId(null);
 			setMessages([]);
@@ -250,29 +395,38 @@ function App() {
 		setSelectedModelId(value);
 	};
 
-	const saveOpenRouter = async () => {
-		await window.wisteria.keys.set("openrouter_api_key", openRouterKey.trim());
-	};
-
 	const sendMessage = async () => {
-		if (!input.trim() || !selectedChatId || !activeProject) return;
+		if (!input.trim() || !selectedChatId) return;
 		if (!selectedProvider || !selectedModelId) {
 			setStatus("Pick a provider and model first");
 			return;
 		}
+
+		const messageContent = input.trim();
 		const modelId = selectedModelId;
 		setIsSending(true);
 		setStatus("Sending…");
+
+		// Check if this is a temporary chat
+		const isTemporaryChat = temporaryChats.some((c) => c.id === selectedChatId);
+		let actualChatId = selectedChatId;
+
+		if (isTemporaryChat) {
+			// Generate name from the first message and persist the chat
+			const chatName = generateChatName(messageContent);
+			actualChatId = await persistChat(selectedChatId, chatName);
+		}
+
 		const userMessage = await window.wisteria.messages.append(
-			selectedChatId,
+			actualChatId,
 			"user",
-			input.trim(),
+			messageContent,
 		);
 		setMessages((prev) => [...prev, userMessage]);
 		setInput("");
 
 		const history = [
-			...(activeProject.system_prompt
+			...(activeProject?.system_prompt
 				? [{ role: "system" as const, content: activeProject.system_prompt }]
 				: []),
 			...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -282,13 +436,13 @@ function App() {
 		const requestId = crypto.randomUUID();
 		const placeholder: Message = {
 			id: requestId,
-			chat_id: selectedChatId,
+			chat_id: actualChatId,
 			role: "assistant",
 			content: "",
 			created_at: Date.now(),
 		};
 		streamMeta.current[requestId] = {
-			chatId: selectedChatId,
+			chatId: actualChatId,
 			completed: false,
 		};
 		setMessages((prev) => [...prev, placeholder]);
@@ -363,41 +517,25 @@ function App() {
 			: ""
 	}`;
 
+	// Combine persisted chats and temporary chats for display
+	const allChatsForDisplay = useMemo(() => {
+		return [...chats, ...temporaryChats];
+	}, [chats, temporaryChats]);
+
 	return (
-		<div className="flex h-screen flex-col bg-wisteria-accent/20 text-wisteria-text relative">
+		<div className="flex h-screen flex-col bg-wisteria-accent/20 text-wisteria-text relative grainy-bg">
 			<header
 				className="flex items-center justify-between gap-4 top-0 right-0 p-4"
 				style={dragRegionStyle}
 			></header>
-			<div>
-				<div className="flex items-center gap-3">
-					{activeProject && (
-						<>
-							<div className="h-3 w-px bg-wisteria-border/60" />
-							<div className="text-sm text-wisteria-textSubtle font-medium">
-								{activeProject.name}
-							</div>
-							{selectedChatId && (
-								<>
-									<div className="h-3 w-px bg-wisteria-border/60" />
-									<div className="text-sm text-wisteria-textSubtle font-medium">
-										{chats.find((c) => c.id === selectedChatId)?.name}
-									</div>
-								</>
-							)}
-						</>
-					)}
-				</div>
-			</div>
+
 			<div className="flex flex-1 overflow-hidden p-2 gap-2">
 				<AppSidebar
 					projects={projects}
-					chats={chats}
+					chats={allChatsForDisplay}
 					selectedProjectId={selectedProjectId}
 					selectedChatId={selectedChatId}
 					activeProject={activeProject}
-					newChatName={newChatName}
-					setNewChatName={setNewChatName}
 					systemPrompt={systemPrompt}
 					setSystemPrompt={setSystemPrompt}
 					theme={theme}
@@ -412,9 +550,9 @@ function App() {
 					onPersistSystemPrompt={persistSystemPrompt}
 				/>
 
-				<main className="flex flex-1 border rounded-lg bg-wisteria-bg flex-col overflow-hidden">
-					<div className="flex-1 overflow-y-auto p-8">
-						<div className="mx-auto max-w-4xl space-y-6">
+				<main className="flex-1 border rounded-lg bg-wisteria-bg overflow-y-auto relative">
+					<div className="overflow-y-auto p-8">
+						<div className="mx-auto max-w-3xl space-y-6">
 							{messages.length === 0 && (
 								<div className="flex h-full items-center justify-center">
 									<div className="rounded-lg border border-dashed border-wisteria-border bg-wisteria-panelStrong/30 px-6 py-4 text-center text-sm text-wisteria-textMuted">
@@ -425,25 +563,15 @@ function App() {
 							{messages.map((msg) => (
 								<div
 									key={msg.id}
-									className="space-y-2"
+									className={`space-y-2 ${
+										msg.role === "user" ? "flex flex-col items-end" : "w-full"
+									}`}
 								>
-									<div className="flex items-center gap-2 text-xs text-wisteria-textMuted">
-										<span className="font-medium capitalize text-wisteria-accent">
-											{msg.role}
-										</span>
-										<span>·</span>
-										<span>
-											{new Date(msg.created_at).toLocaleTimeString([], {
-												hour: "2-digit",
-												minute: "2-digit",
-											})}
-										</span>
-									</div>
 									<div
-										className={`whitespace-pre-wrap rounded-lg px-4 py-3 text-sm leading-relaxed ${
+										className={`whitespace-pre-wrap rounded-lg px-4 text-sm leading-relaxed ${
 											msg.role === "user"
-												? "bg-wisteria-bubbleUser"
-												: "bg-wisteria-panel"
+												? "bg-wisteria-bubbleUser max-w-[80%] px-4 py-3"
+												: "w-full"
 										}`}
 									>
 										{msg.content}
@@ -453,65 +581,35 @@ function App() {
 						</div>
 					</div>
 
-					<div className="border-t border-wisteria-border bg-wisteria-panel/30 p-5 backdrop-blur-sm">
-						<div className="mx-auto max-w-4xl space-y-4">
-							<div className="flex gap-3">
-								<Select
-									value={selectedProvider || undefined}
-									onValueChange={handleProviderChange}
-								>
-									<SelectTrigger className="shrink-0 w-fit border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent">
-										<SelectValue placeholder="Provider…" />
-									</SelectTrigger>
-									<SelectContent className="border border-wisteria-border bg-wisteria-panel text-wisteria-text shadow-lg">
-										{uniqueProviders.map((provider) => (
-											<SelectItem
-												key={provider}
-												value={provider}
-											>
-												{provider}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<Select
-									value={selectedModelId || undefined}
-									onValueChange={handleModelChange}
-									disabled={!selectedProvider}
-								>
-									<SelectTrigger className="shrink-0 w-fit border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent disabled:opacity-50">
-										<SelectValue placeholder="Model…" />
-									</SelectTrigger>
-									<SelectContent className="border border-wisteria-border bg-wisteria-panel text-wisteria-text shadow-lg">
-										{filteredModels.map((m) => (
-											<SelectItem
-												key={m.id}
-												value={m.id}
-											>
-												{m.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<div className="flex-1">
-									<label
-										htmlFor="chat-input"
-										className="sr-only"
-									>
-										Chat input
-									</label>
-									<Textarea
-										id="chat-input"
-										ref={composerRef}
-										value={input}
-										onChange={(e) => setInput(e.target.value)}
-										onKeyDown={handleComposerKey}
-										placeholder="Type a message and hit Enter to send"
-										rows={4}
-										disabled={!selectedChatId || isSending}
-										className="w-full border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent resize-none"
+					<div className="sticky bottom-0 left-0 right-0 px-5 pb-5">
+						<div className="mx-auto max-w-4xl space-y-4 backdrop-blur-2xl border border-wisteria-border bg-wisteria-bubbleUser rounded-lg flex flex-col px-4 py-3">
+							<Textarea
+								id="chat-input"
+								ref={composerRef}
+								value={input}
+								onChange={(e) => setInput(e.target.value)}
+								onKeyDown={handleComposerKey}
+								placeholder="Type a message and hit Enter to send"
+								rows={4}
+								disabled={!selectedChatId || isSending}
+								className="w-full border-none ring-0! p-1 outline-none shadow-none bg-transparent text-sm text-wisteria-text resize-none"
+							/>
+
+							<div className="flex items-center justify-between gap-2">
+								<div className="flex items-center gap-2">
+									<ProviderSelector
+										providers={uniqueProviders}
+										selectedProvider={selectedProvider}
+										onValueChange={handleProviderChange}
+									/>
+									<ModelSelector
+										models={filteredModels}
+										selectedModelId={selectedModelId}
+										onValueChange={handleModelChange}
+										disabled={!selectedProvider}
 									/>
 								</div>
+
 								<Button
 									onClick={() => void sendMessage()}
 									disabled={!input.trim() || isSending || !selectedChatId}
@@ -520,27 +618,6 @@ function App() {
 									{isSending ? "Sending…" : "Send"}
 								</Button>
 							</div>
-							{activeProject && (
-								<div className="flex items-center gap-2 text-xs text-wisteria-textMuted">
-									<span>OpenRouter API key:</span>
-									<Input
-										className="flex-1 border border-wisteria-border bg-wisteria-panel text-xs text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
-										value={openRouterKey}
-										onChange={(e) => setOpenRouterKey(e.target.value)}
-										placeholder="sk-..."
-										type="password"
-									/>
-									<Button
-										variant="outline"
-										size="sm"
-										className="border border-wisteria-border text-xs font-medium text-wisteria-text hover:border-wisteria-accent hover:bg-wisteria-highlight transition-colors"
-										onClick={() => void saveOpenRouter()}
-										disabled={!openRouterKey.trim()}
-									>
-										Save
-									</Button>
-								</div>
-							)}
 						</div>
 					</div>
 				</main>

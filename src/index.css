@@ -242,3 +242,41 @@ button {
 		@apply bg-background text-foreground;
 	}
 }
+
+/* Grainy texture effect */
+.grainy-bg::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	opacity: 0.5;
+	pointer-events: none;
+	background-image: radial-gradient(
+			circle at 0.5px 0.5px,
+			rgba(0, 0, 0, 0.3) 0.5px,
+			transparent 0
+		),
+		radial-gradient(
+			circle at 1.5px 1.5px,
+			rgba(0, 0, 0, 0.2) 0.5px,
+			transparent 0
+		),
+		radial-gradient(
+			circle at 0.5px 1.5px,
+			rgba(0, 0, 0, 0.15) 0.5px,
+			transparent 0
+		),
+		radial-gradient(
+			circle at 1.5px 0.5px,
+			rgba(0, 0, 0, 0.15) 0.5px,
+			transparent 0
+		);
+	background-size: 2px 2px;
+	background-position: 0 0, 0 0, 0 0, 0 0;
+	z-index: 1;
+	mix-blend-mode: multiply;
+}
+
+.grainy-bg > * {
+	position: relative;
+	z-index: 2;
+}

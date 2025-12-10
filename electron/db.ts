@@ -13,7 +13,7 @@ export type Project = {
 
 export type Chat = {
 	id: string;
-	project_id: string;
+	project_id: string | null;
 	name: string;
 	created_at: number;
 };
@@ -75,6 +75,47 @@ function migrateProjectsTable(database: Database.Database) {
 	}
 }
 
+function migrateChatsTable(database: Database.Database) {
+	// Check if chats table exists
+	const tableExists = database
+		.prepare(
+			"SELECT name FROM sqlite_master WHERE type='table' AND name='chats'",
+		)
+		.get() as { name: string } | undefined;
+
+	if (!tableExists) {
+		// Table doesn't exist yet, will be created below
+		return;
+	}
+
+	// Check if project_id is already nullable
+	const tableInfo = database
+		.prepare("PRAGMA table_info(chats)")
+		.all() as Array<{ name: string; type: string; notnull: number }>;
+
+	const projectIdColumn = tableInfo.find((col) => col.name === "project_id");
+	const isNullable = projectIdColumn && projectIdColumn.notnull === 0;
+
+	if (!isNullable) {
+		// Migrate: make project_id nullable
+		// Temporarily disable foreign keys for the migration
+		database.pragma("foreign_keys = OFF");
+		database.exec(`
+			CREATE TABLE chats_new (
+				id TEXT PRIMARY KEY,
+				project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+				name TEXT NOT NULL,
+				created_at INTEGER NOT NULL
+			);
+			INSERT INTO chats_new (id, project_id, name, created_at)
+			SELECT id, project_id, name, created_at FROM chats;
+			DROP TABLE chats;
+			ALTER TABLE chats_new RENAME TO chats;
+		`);
+		database.pragma("foreign_keys = ON");
+	}
+}
+
 function ensureDb() {
 	if (db) return db;
 	const dbPath = path.join(app.getPath("userData"), "wisteria.db");
@@ -82,8 +123,9 @@ function ensureDb() {
 	db.pragma("journal_mode = WAL");
 	db.pragma("foreign_keys = ON");
 
-	// Run migration before creating tables
+	// Run migrations before creating tables
 	migrateProjectsTable(db);
+	migrateChatsTable(db);
 
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS projects (
@@ -94,7 +136,7 @@ function ensureDb() {
 		);
 		CREATE TABLE IF NOT EXISTS chats (
 			id TEXT PRIMARY KEY,
-			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
 			name TEXT NOT NULL,
 			created_at INTEGER NOT NULL
 		);
@@ -162,8 +204,16 @@ export function deleteProject(projectId: string) {
 	database.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
 }
 
-export function listChats(projectId: string): Chat[] {
+export function listChats(projectId: string | null = null): Chat[] {
 	const database = ensureDb();
+	if (projectId === null) {
+		// Return only standalone chats (chats with no project_id)
+		return database
+			.prepare(
+				"SELECT * FROM chats WHERE project_id IS NULL ORDER BY created_at DESC",
+			)
+			.all() as Chat[];
+	}
 	return database
 		.prepare(
 			"SELECT * FROM chats WHERE project_id = ? ORDER BY created_at DESC",
@@ -171,7 +221,14 @@ export function listChats(projectId: string): Chat[] {
 		.all(projectId) as Chat[];
 }
 
-export function createChat(projectId: string, name: string): Chat {
+export function listAllChats(): Chat[] {
+	const database = ensureDb();
+	return database
+		.prepare("SELECT * FROM chats ORDER BY created_at DESC")
+		.all() as Chat[];
+}
+
+export function createChat(projectId: string | null, name: string): Chat {
 	const database = ensureDb();
 	const chat: Chat = {
 		id: randomUUID(),
@@ -185,6 +242,25 @@ export function createChat(projectId: string, name: string): Chat {
 		)
 		.run(chat);
 	return chat;
+}
+
+export function updateChat(
+	chatId: string,
+	data: Partial<Pick<Chat, "name" | "project_id">>,
+): Chat | null {
+	const database = ensureDb();
+	const existing = database
+		.prepare("SELECT * FROM chats WHERE id = ?")
+		.get(chatId) as Chat | undefined;
+	if (!existing) return null;
+	const updated: Chat = {
+		...existing,
+		...data,
+	};
+	database
+		.prepare("UPDATE chats SET name=@name, project_id=@project_id WHERE id=@id")
+		.run(updated);
+	return updated;
 }
 
 export function deleteChat(chatId: string) {

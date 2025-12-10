@@ -20,8 +20,9 @@ declare global {
 				delete: (projectId: string) => Promise<boolean>;
 			};
 			chats: {
-				list: (projectId: string) => Promise<Chat[]>;
-				create: (projectId: string, name: string) => Promise<Chat>;
+				list: (projectId?: string | null) => Promise<Chat[]>;
+				listAll: () => Promise<Chat[]>;
+				create: (projectId: string | null, name: string) => Promise<Chat>;
 				delete: (chatId: string) => Promise<boolean>;
 			};
 			messages: {

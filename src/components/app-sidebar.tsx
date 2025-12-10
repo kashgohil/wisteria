@@ -1,6 +1,6 @@
+import { ChatList } from "@/components/chat-list";
 import { ProjectList } from "@/components/project-list";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type Project = Awaited<
@@ -14,8 +14,6 @@ interface AppSidebarProps {
 	selectedProjectId: string | null;
 	selectedChatId: string | null;
 	activeProject: Project | null;
-	newChatName: string;
-	setNewChatName: (value: string) => void;
 	systemPrompt: string;
 	setSystemPrompt: (value: string) => void;
 	theme: "light" | "dark";
@@ -23,7 +21,7 @@ interface AppSidebarProps {
 		value: "light" | "dark" | ((prev: "light" | "dark") => "light" | "dark"),
 	) => void;
 	formattedStatus: string;
-	onSelectProject: (projectId: string) => Promise<void>;
+	onSelectProject: (projectId: string | null) => Promise<void>;
 	onDeleteProject: (projectId: string) => Promise<void>;
 	onCreateProject: (data: {
 		name: string;
@@ -41,8 +39,6 @@ export function AppSidebar({
 	selectedProjectId,
 	selectedChatId,
 	activeProject,
-	newChatName,
-	setNewChatName,
 	systemPrompt,
 	setSystemPrompt,
 	theme,
@@ -57,7 +53,7 @@ export function AppSidebar({
 	onPersistSystemPrompt,
 }: AppSidebarProps) {
 	return (
-		<aside className="shrink-0 overflow-y-auto">
+		<aside className="shrink-0 overflow-y-auto max-w-full md:max-w-1/6">
 			<div className="flex flex-col gap-5">
 				<ProjectList
 					projects={projects}
@@ -68,69 +64,14 @@ export function AppSidebar({
 					onCreateProject={onCreateProject}
 				/>
 
-				<section className="rounded-lg border border-wisteria-border bg-wisteria-panel p-4">
-					<div className="text-xs font-semibold text-wisteria-textSubtle uppercase tracking-wider mb-4">
-						Chats
-					</div>
-					<div className="space-y-1.5">
-						{chats
-							.filter((c) => c.project_id === selectedProjectId)
-							.map((c) => (
-								<div
-									key={c.id}
-									className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
-										c.id === selectedChatId
-											? "bg-wisteria-highlight"
-											: "hover:bg-wisteria-panelStrong/50"
-									}`}
-									onClick={() => void onSelectChat(c.id)}
-								>
-									<div className="min-w-0 flex-1 truncate text-sm font-medium text-wisteria-text">
-										{c.name}
-									</div>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="ml-2 shrink-0 h-7 text-xs text-wisteria-textMuted opacity-0 group-hover:opacity-100 hover:text-wisteria-danger transition-opacity"
-										onClick={(e) => {
-											e.stopPropagation();
-											void onDeleteChat(c.id);
-										}}
-									>
-										Delete
-									</Button>
-								</div>
-							))}
-						{selectedProjectId &&
-							chats.filter((c) => c.project_id === selectedProjectId).length ===
-								0 && (
-								<div className="rounded-md border border-dashed border-wisteria-border bg-wisteria-panelStrong/30 px-3 py-2 text-xs text-wisteria-textMuted text-center">
-									No chats for this project.
-								</div>
-							)}
-					</div>
-					<div className="mt-4 flex gap-2">
-						<Input
-							className="w-full border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
-							value={newChatName}
-							onChange={(e) => setNewChatName(e.target.value)}
-							placeholder="New chat title"
-							disabled={!selectedProjectId}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" && selectedProjectId) {
-									void onCreateChat();
-								}
-							}}
-						/>
-						<Button
-							onClick={() => void onCreateChat()}
-							disabled={!newChatName.trim() || !selectedProjectId}
-							className="bg-wisteria-accent font-medium text-white hover:bg-wisteria-accentSoft transition-colors disabled:opacity-50"
-						>
-							Add
-						</Button>
-					</div>
-				</section>
+				<ChatList
+					chats={chats}
+					selectedChatId={selectedChatId}
+					selectedProjectId={selectedProjectId}
+					onSelectChat={onSelectChat}
+					onDeleteChat={onDeleteChat}
+					onCreateChat={onCreateChat}
+				/>
 
 				{activeProject && (
 					<section className="rounded-lg border border-wisteria-border bg-wisteria-panel p-4">

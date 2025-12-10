@@ -19,10 +19,16 @@ const api = {
 			ipcRenderer.invoke("projects:delete", projectId) as Promise<boolean>,
 	},
 	chats: {
-		list: (projectId: string) =>
-			ipcRenderer.invoke("chats:list", projectId) as Promise<Chat[]>,
-		create: (projectId: string, name: string) =>
+		list: (projectId?: string | null) =>
+			ipcRenderer.invoke("chats:list", projectId ?? null) as Promise<Chat[]>,
+		listAll: () => ipcRenderer.invoke("chats:listAll") as Promise<Chat[]>,
+		create: (projectId: string | null, name: string) =>
 			ipcRenderer.invoke("chats:create", projectId, name) as Promise<Chat>,
+		update: (
+			chatId: string,
+			data: Partial<Pick<Chat, "name" | "project_id">>,
+		) =>
+			ipcRenderer.invoke("chats:update", chatId, data) as Promise<Chat | null>,
 		delete: (chatId: string) =>
 			ipcRenderer.invoke("chats:delete", chatId) as Promise<boolean>,
 	},

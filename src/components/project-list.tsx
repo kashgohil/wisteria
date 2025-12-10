@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 type Project = {
@@ -20,7 +21,7 @@ type Project = {
 
 type Chat = {
 	id: string;
-	project_id: string;
+	project_id: string | null;
 	name: string;
 	created_at: number;
 };
@@ -29,7 +30,7 @@ interface ProjectListProps {
 	projects: Project[];
 	chats: Chat[];
 	selectedProjectId: string | null;
-	onSelectProject: (projectId: string) => void;
+	onSelectProject: (projectId: string | null) => Promise<void>;
 	onDeleteProject: (projectId: string) => void;
 	onCreateProject: (data: {
 		name: string;
@@ -72,21 +73,41 @@ export function ProjectList({
 
 	return (
 		<>
-			<section className="rounded-lg  p-4">
+			<section className="rounded-lg p-4">
 				<div className="flex items-center justify-between mb-4">
 					<div className="text-xs font-semibold text-wisteria-textSubtle uppercase tracking-wider">
 						Projects
 					</div>
 					<Button
 						variant="ghost"
-						size="sm"
+						size="icon"
 						onClick={() => setIsDialogOpen(true)}
-						className="h-7 w-7 p-0 text-wisteria-textSubtle hover:text-wisteria-text hover:bg-wisteria-highlight transition-colors"
+						className="text-wisteria-textSubtle hover:text-wisteria-text hover:bg-wisteria-highlight"
 					>
-						+
+						<Plus />
 					</Button>
 				</div>
 				<div className="space-y-1.5">
+					<div
+						className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
+							selectedProjectId === null
+								? "bg-wisteria-highlight"
+								: "hover:bg-wisteria-panelStrong/50"
+						}`}
+						onClick={() => void onSelectProject(null)}
+					>
+						<div className="min-w-0 flex-1">
+							<div className="text-sm font-medium text-wisteria-text truncate">
+								Standalone Chats
+							</div>
+							<div className="text-xs text-wisteria-textMuted mt-0.5">
+								{chats.filter((c) => c.project_id === null).length} chat
+								{chats.filter((c) => c.project_id === null).length !== 1
+									? "s"
+									: ""}
+							</div>
+						</div>
+					</div>
 					{projects.map((p) => (
 						<div
 							key={p.id}
@@ -143,7 +164,7 @@ export function ProjectList({
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
-						<div className="space-y-2">
+						<div className="flex flex-col gap-2">
 							<label
 								htmlFor="project-name"
 								className="text-sm font-medium text-wisteria-text"
@@ -152,7 +173,7 @@ export function ProjectList({
 							</label>
 							<Input
 								id="project-name"
-								className="border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
+								className="border-wisteria-border bg-wisteria-panel text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
 								value={projectName}
 								onChange={(e) => setProjectName(e.target.value)}
 								placeholder="Enter project name"
@@ -164,7 +185,7 @@ export function ProjectList({
 								}}
 							/>
 						</div>
-						<div className="space-y-2">
+						<div className="flex flex-col gap-2">
 							<label
 								htmlFor="project-system-prompt"
 								className="text-sm font-medium text-wisteria-text"
@@ -173,7 +194,7 @@ export function ProjectList({
 							</label>
 							<Textarea
 								id="project-system-prompt"
-								className="w-full border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
+								className="w-full border-wisteria-border bg-wisteria-panel placeholder:text-wisteria-accent/50 text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
 								value={systemPrompt}
 								onChange={(e) => setSystemPrompt(e.target.value)}
 								placeholder="Optional system prompt for all chats in this project"
