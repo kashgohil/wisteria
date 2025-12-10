@@ -82,7 +82,7 @@ export function AppSidebar({
 			<div className="flex gap-2">
 				<Button
 					type="button"
-					variant="secondary"
+					variant="outline"
 					size="lg"
 					aria-pressed={theme === "dark"}
 					onClick={() =>

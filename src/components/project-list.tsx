@@ -40,7 +40,6 @@ interface ProjectListProps {
 
 export function ProjectList({
 	projects,
-	chats,
 	selectedProjectId,
 	onSelectProject,
 	onDeleteProject,
@@ -98,16 +97,8 @@ export function ProjectList({
 								}`}
 								onClick={() => void onSelectProject(p.id)}
 							>
-								<div className="min-w-0 flex-1">
-									<div className="text-sm font-medium text-foreground truncate">
-										{p.name}
-									</div>
-									<div className="text-xs text-muted-foreground mt-0.5">
-										{chats.filter((c) => c.project_id === p.id).length} chat
-										{chats.filter((c) => c.project_id === p.id).length !== 1
-											? "s"
-											: ""}
-									</div>
+								<div className="min-w-0 flex-1 text-sm font-medium text-foreground truncate">
+									{p.name}
 								</div>
 								<Trash2
 									className="h-4 w-4 hidden group-hover:block hover:text-destructive mx-2"
@@ -130,21 +121,8 @@ export function ProjectList({
 								key={selectedProjectId}
 								className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${"bg-accent"}`}
 							>
-								<div className="min-w-0 flex-1">
-									<div className="text-sm font-medium text-foreground truncate">
-										{selectedProject?.name}
-									</div>
-									<div className="text-xs text-muted-foreground mt-0.5">
-										{
-											chats.filter((c) => c.project_id === selectedProjectId)
-												.length
-										}{" "}
-										chat
-										{chats.filter((c) => c.project_id === selectedProjectId)
-											.length !== 1
-											? "s"
-											: ""}
-									</div>
+								<div className="min-w-0 flex-1 text-sm font-medium text-foreground truncate">
+									{selectedProject?.name}
 								</div>
 
 								<Trash2
