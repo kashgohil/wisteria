@@ -538,11 +538,13 @@ function App() {
 	return (
 		<div className="flex h-screen flex-col bg-primary/20 text-foreground relative grainy-bg">
 			<header
-				className="flex items-center justify-between gap-4 top-0 right-0 p-4"
+				className="flex items-center justify-center text-sm! gap-4 top-0 right-0 p-2 text-center"
 				style={dragRegionStyle}
-			></header>
+			>
+				Wisteria
+			</header>
 
-			<div className="flex flex-1 overflow-hidden p-2 gap-2">
+			<div className="flex flex-1 overflow-hidden px-2 pb-2 gap-2">
 				<AppSidebar
 					projects={projects}
 					chats={allChatsForDisplay}

@@ -95,7 +95,7 @@ export function AppSidebar({
 					) : (
 						<Sun className="h-4 w-4" />
 					)}
-					Theme
+					<span className="hidden lg:block">Theme</span>
 				</Button>
 				<Button
 					type="button"
@@ -105,7 +105,7 @@ export function AppSidebar({
 					className="text-sm! p-0 flex-1"
 				>
 					<Settings className="h-4 w-4" />
-					Settings
+					<span className="hidden lg:block">Settings</span>
 				</Button>
 			</div>
 		</aside>

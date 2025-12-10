@@ -38,8 +38,8 @@ function createWindow() {
 		},
 		titleBarStyle: "hiddenInset",
 		trafficLightPosition: {
-			x: 8,
-			y: 8,
+			x: 10,
+			y: 10,
 		},
 	});
 
