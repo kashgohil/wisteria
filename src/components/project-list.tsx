@@ -73,7 +73,7 @@ export function ProjectList({
 
 	return (
 		<>
-			<section className="rounded-lg p-4">
+			<section className="rounded-lg">
 				<div className="flex items-center justify-between mb-2">
 					<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 						Projects

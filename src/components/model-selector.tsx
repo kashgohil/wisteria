@@ -27,12 +27,16 @@ export function ModelSelector({
 			onValueChange={onValueChange}
 			disabled={disabled}
 		>
-			<SelectTrigger className="shrink-0 w-fit text-sm">
+			<SelectTrigger className="shrink-0 w-fit text-sm! px-2">
 				<SelectValue placeholder="Model…" />
 			</SelectTrigger>
 			<SelectContent>
 				{models.map((m) => (
-					<SelectItem key={m.id} value={m.id}>
+					<SelectItem
+						key={m.id}
+						value={m.id}
+						className="text-sm! p-2"
+					>
 						{m.label}
 					</SelectItem>
 				))}
@@ -40,4 +44,3 @@ export function ModelSelector({
 		</Select>
 	);
 }
-

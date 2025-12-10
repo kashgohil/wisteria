@@ -40,7 +40,6 @@ export function AppSidebar({
 	selectedChatId,
 	theme,
 	setTheme,
-	formattedStatus,
 	onSelectProject,
 	onDeleteProject,
 	onCreateProject,
@@ -49,7 +48,7 @@ export function AppSidebar({
 	onCreateChat,
 }: AppSidebarProps) {
 	return (
-		<aside className="shrink-0 overflow-y-auto w-full max-w-full md:max-w-1/6">
+		<aside className="shrink-0 overflow-y-auto w-full max-w-full md:max-w-1/6 flex flex-col gap-5 justify-between p-5">
 			<div className="flex flex-col gap-5">
 				<ProjectList
 					projects={projects}
@@ -68,25 +67,24 @@ export function AppSidebar({
 					onDeleteChat={onDeleteChat}
 					onCreateChat={onCreateChat}
 				/>
-
-				<div className="flex items-center gap-3">
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						aria-pressed={theme === "dark"}
-						onClick={() =>
-							setTheme((prev) => (prev === "light" ? "dark" : "light"))
-						}
-						className="h-8 w-8 p-0"
-					>
-						{theme === "light" ? <Moon /> : <Sun />}
-					</Button>
-					<div className="rounded-md border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
-						{formattedStatus}
-					</div>
-				</div>
 			</div>
+			<Button
+				type="button"
+				variant="secondary"
+				size="lg"
+				aria-pressed={theme === "dark"}
+				onClick={() =>
+					setTheme((prev) => (prev === "light" ? "dark" : "light"))
+				}
+				className="w-full text-sm! p-0"
+			>
+				{theme === "light" ? (
+					<Moon className="h-4 w-4" />
+				) : (
+					<Sun className="h-4 w-4" />
+				)}
+				Change Theme
+			</Button>
 		</aside>
 	);
 }

@@ -18,13 +18,20 @@ export function ProviderSelector({
 	onValueChange,
 }: ProviderSelectorProps) {
 	return (
-		<Select value={selectedProvider || undefined} onValueChange={onValueChange}>
-			<SelectTrigger className="shrink-0 w-fit text-sm">
+		<Select
+			value={selectedProvider || undefined}
+			onValueChange={onValueChange}
+		>
+			<SelectTrigger className="text-sm! px-2">
 				<SelectValue placeholder="Provider…" />
 			</SelectTrigger>
 			<SelectContent>
 				{providers.map((provider) => (
-					<SelectItem key={provider} value={provider}>
+					<SelectItem
+						key={provider}
+						value={provider}
+						className="text-sm! p-2"
+					>
 						{provider}
 					</SelectItem>
 				))}
@@ -32,4 +39,3 @@ export function ProviderSelector({
 		</Select>
 	);
 }
-
