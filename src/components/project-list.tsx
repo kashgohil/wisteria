@@ -71,6 +71,8 @@ export function ProjectList({
 		setIsDialogOpen(false);
 	};
 
+	const selectedProject = projects.find((p) => p.id === selectedProjectId);
+
 	return (
 		<>
 			<section className="rounded-lg">
@@ -87,56 +89,85 @@ export function ProjectList({
 					</Button>
 				</div>
 				<div className="space-y-1.5">
-					{selectedProjectId && (
-						<div
-							className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
-								selectedProjectId === null ? "bg-accent" : "hover:bg-muted/50"
-							}`}
-							onClick={() => void onSelectProject(null)}
-						>
-							<div className="min-w-0 flex-1">
-								<div className="text-sm font-medium text-foreground truncate">
-									Back to standalone chats
-								</div>
-							</div>
-						</div>
-					)}
-					{projects.map((p) => (
-						<div
-							key={p.id}
-							className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
-								p.id === selectedProjectId ? "bg-accent" : "hover:bg-muted/50"
-							}`}
-							onClick={() => void onSelectProject(p.id)}
-						>
-							<div className="min-w-0 flex-1">
-								<div className="text-sm font-medium text-foreground truncate">
-									{p.name}
-								</div>
-								<div className="text-xs text-muted-foreground mt-0.5">
-									{chats.filter((c) => c.project_id === p.id).length} chat
-									{chats.filter((c) => c.project_id === p.id).length !== 1
-										? "s"
-										: ""}
-								</div>
-							</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="ml-2 shrink-0 h-7 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-								onClick={(e) => {
-									e.stopPropagation();
-									void onDeleteProject(p.id);
-								}}
+					{!selectedProjectId &&
+						projects.map((p) => (
+							<div
+								key={p.id}
+								className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
+									p.id === selectedProjectId ? "bg-accent" : "hover:bg-muted/50"
+								}`}
+								onClick={() => void onSelectProject(p.id)}
 							>
-								<Trash2 />
-							</Button>
-						</div>
-					))}
+								<div className="min-w-0 flex-1">
+									<div className="text-sm font-medium text-foreground truncate">
+										{p.name}
+									</div>
+									<div className="text-xs text-muted-foreground mt-0.5">
+										{chats.filter((c) => c.project_id === p.id).length} chat
+										{chats.filter((c) => c.project_id === p.id).length !== 1
+											? "s"
+											: ""}
+									</div>
+								</div>
+								<Trash2
+									className="h-4 w-4 hidden group-hover:block hover:text-destructive mx-2"
+									onClick={(e) => {
+										e.stopPropagation();
+										void onDeleteProject(p.id);
+									}}
+								/>
+							</div>
+						))}
+
 					{projects.length === 0 && (
 						<div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground text-center">
 							No projects yet.
 						</div>
+					)}
+					{selectedProjectId && (
+						<>
+							<div
+								key={selectedProjectId}
+								className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${"bg-accent"}`}
+							>
+								<div className="min-w-0 flex-1">
+									<div className="text-sm font-medium text-foreground truncate">
+										{selectedProject?.name}
+									</div>
+									<div className="text-xs text-muted-foreground mt-0.5">
+										{
+											chats.filter((c) => c.project_id === selectedProjectId)
+												.length
+										}{" "}
+										chat
+										{chats.filter((c) => c.project_id === selectedProjectId)
+											.length !== 1
+											? "s"
+											: ""}
+									</div>
+								</div>
+
+								<Trash2
+									className="h-4 w-4 hidden group-hover:block hover:text-destructive mx-2"
+									onClick={(e) => {
+										e.stopPropagation();
+										void onDeleteProject(selectedProjectId);
+									}}
+								/>
+							</div>
+							<div
+								className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
+									selectedProjectId === null ? "bg-accent" : "hover:bg-muted/50"
+								}`}
+								onClick={() => void onSelectProject(null)}
+							>
+								<div className="min-w-0 flex-1">
+									<div className="text-sm font-medium text-foreground truncate">
+										Back to standalone chats
+									</div>
+								</div>
+							</div>
+						</>
 					)}
 				</div>
 			</section>

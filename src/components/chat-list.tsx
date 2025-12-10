@@ -53,17 +53,13 @@ export function ChatList({
 						<div className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
 							{c.name}
 						</div>
-						<Button
-							size="sm"
-							variant="ghost"
-							className="ml-2 shrink-0 h-4 w-4 p-0 text-xs text-muted-foreground hidden group-hover:block hover:text-destructive transition-opacity"
+						<Trash2
+							className="h-4 w-4 hidden group-hover:block hover:text-destructive"
 							onClick={(e) => {
 								e.stopPropagation();
 								void onDeleteChat(c.id);
 							}}
-						>
-							<Trash2 className="h-2 w-2" />
-						</Button>
+						/>
 					</div>
 				))}
 				{filteredChats.length === 0 && (
