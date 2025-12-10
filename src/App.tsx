@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { ModelSelector } from "@/components/model-selector";
 import { ProviderSelector } from "@/components/provider-selector";
+import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { CSSProperties } from "react";
@@ -72,6 +73,7 @@ function App() {
 	const [input, setInput] = useState("");
 	const [isSending, setIsSending] = useState(false);
 	const [theme, setTheme] = useState<ThemeMode>("light");
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 	const streamMeta = useRef<
 		Record<string, { chatId: string; completed: boolean }>
 	>({});
@@ -551,6 +553,7 @@ function App() {
 					onDeleteChat={deleteChat}
 					onCreateChat={createChat}
 					onPersistSystemPrompt={persistSystemPrompt}
+					onOpenSettings={() => setIsSettingsOpen(true)}
 				/>
 
 				<main className="flex-1 border rounded-lg bg-background overflow-y-auto relative">
@@ -573,7 +576,7 @@ function App() {
 									<div
 										className={`rounded-lg px-4 py-3 text-sm leading-relaxed ${
 											msg.role === "user"
-												? "bg-wisteria-bubbleUser max-w-[80%] whitespace-pre-wrap"
+												? "bg-wisteria-bubbleUser max-w-[80%]"
 												: msg.role === "assistant"
 												? "w-full markdown-content"
 												: "w-full"
@@ -636,6 +639,11 @@ function App() {
 						</div>
 					</div>
 				</main>
+				<SettingsDialog
+					open={isSettingsOpen}
+					onOpenChange={setIsSettingsOpen}
+					providers={uniqueProviders}
+				/>
 			</div>
 		</div>
 	);

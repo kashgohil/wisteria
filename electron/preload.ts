@@ -90,6 +90,10 @@ const api = {
 			ipcRenderer.invoke("keys:set", key, value) as Promise<boolean>,
 		get: (key: string) =>
 			ipcRenderer.invoke("keys:get", key) as Promise<string | null>,
+		delete: (key: string) =>
+			ipcRenderer.invoke("keys:delete", key) as Promise<boolean>,
+		list: () =>
+			ipcRenderer.invoke("keys:list") as Promise<{ key: string; value: string }[]>,
 	},
 };
 

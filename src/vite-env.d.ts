@@ -53,6 +53,8 @@ declare global {
 			keys: {
 				set: (key: string, value: string) => Promise<boolean>;
 				get: (key: string) => Promise<string | null>;
+				delete: (key: string) => Promise<boolean>;
+				list: () => Promise<{ key: string; value: string }[]>;
 			};
 		};
 	}

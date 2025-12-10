@@ -1,7 +1,7 @@
 import { ChatList } from "@/components/chat-list";
 import { ProjectList } from "@/components/project-list";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Settings, Sun } from "lucide-react";
 
 type Project = Awaited<
 	ReturnType<typeof window.wisteria.projects.list>
@@ -31,6 +31,7 @@ interface AppSidebarProps {
 	onDeleteChat: (chatId: string) => Promise<void>;
 	onCreateChat: () => Promise<void>;
 	onPersistSystemPrompt: () => Promise<void>;
+	onOpenSettings: () => void;
 }
 
 export function AppSidebar({
@@ -46,6 +47,7 @@ export function AppSidebar({
 	onSelectChat,
 	onDeleteChat,
 	onCreateChat,
+	onOpenSettings,
 }: AppSidebarProps) {
 	return (
 		<aside className="shrink-0 overflow-y-auto w-full max-w-full md:max-w-1/6 flex flex-col gap-5 justify-between p-5">
@@ -68,23 +70,35 @@ export function AppSidebar({
 					onCreateChat={onCreateChat}
 				/>
 			</div>
-			<Button
-				type="button"
-				variant="secondary"
-				size="lg"
-				aria-pressed={theme === "dark"}
-				onClick={() =>
-					setTheme((prev) => (prev === "light" ? "dark" : "light"))
-				}
-				className="w-full text-sm! p-0"
-			>
-				{theme === "light" ? (
-					<Moon className="h-4 w-4" />
-				) : (
-					<Sun className="h-4 w-4" />
-				)}
-				Change Theme
-			</Button>
+			<div className="flex gap-2">
+				<Button
+					type="button"
+					variant="secondary"
+					size="lg"
+					aria-pressed={theme === "dark"}
+					onClick={() =>
+						setTheme((prev) => (prev === "light" ? "dark" : "light"))
+					}
+					className="text-sm! p-0 flex-1"
+				>
+					{theme === "light" ? (
+						<Moon className="h-4 w-4" />
+					) : (
+						<Sun className="h-4 w-4" />
+					)}
+					Theme
+				</Button>
+				<Button
+					type="button"
+					variant="outline"
+					size="lg"
+					onClick={onOpenSettings}
+					className="text-sm! p-0 flex-1"
+				>
+					<Settings className="h-4 w-4" />
+					Settings
+				</Button>
+			</div>
 		</aside>
 	);
 }

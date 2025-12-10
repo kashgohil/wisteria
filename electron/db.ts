@@ -313,6 +313,16 @@ export function readKey(key: string): string | null {
 	return row?.value ?? null;
 }
 
+export function deleteKey(key: string) {
+	const database = ensureDb();
+	database.prepare("DELETE FROM kv WHERE key = ?").run(key);
+}
+
+export function listKeys(): KeyValue[] {
+	const database = ensureDb();
+	return database.prepare("SELECT key, value FROM kv").all() as KeyValue[];
+}
+
 export function closeDb() {
 	if (db) {
 		db.close();

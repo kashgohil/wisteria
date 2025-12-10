@@ -11,6 +11,8 @@ import {
 	listMessages,
 	listProjects,
 	readKey,
+	deleteKey,
+	listKeys,
 	saveKey,
 	updateChat,
 	updateProject,
@@ -148,7 +150,16 @@ export function registerIpcHandlers() {
 		return true;
 	});
 
+	ipcMain.handle("keys:delete", (_event, key: string) => {
+		deleteKey(key);
+		return true;
+	});
+
 	ipcMain.handle("keys:get", (_event, key: string) => {
 		return readKey(key);
+	});
+
+	ipcMain.handle("keys:list", () => {
+		return listKeys();
 	});
 }
