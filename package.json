@@ -3,7 +3,7 @@
 	"description": "Interact with any LLM of your choice, locally and BYOK.",
 	"author": "Kash Gohil",
 	"private": true,
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
