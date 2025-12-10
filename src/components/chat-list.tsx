@@ -35,14 +35,13 @@ export function ChatList({
 	return (
 		<section className="rounded-lg p-4">
 			<div className="flex items-center justify-between mb-4">
-				<div className="text-xs font-semibold text-wisteria-textSubtle uppercase tracking-wider">
+				<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 					Chats
 				</div>
 				<Button
 					variant="ghost"
 					size="icon"
 					onClick={() => void onCreateChat()}
-					className="text-wisteria-textSubtle hover:text-wisteria-text hover:bg-wisteria-highlight"
 					title="New chat"
 				>
 					<Plus className="h-4 w-4" />
@@ -53,13 +52,11 @@ export function ChatList({
 					<div
 						key={c.id}
 						className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
-							c.id === selectedChatId
-								? "bg-wisteria-highlight"
-								: "hover:bg-wisteria-panelStrong/50"
+							c.id === selectedChatId ? "bg-accent" : "hover:bg-muted/50"
 						}`}
 					>
 						<div
-							className="min-w-0 flex-1 truncate text-sm font-medium text-wisteria-text"
+							className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
 							onClick={() => void onSelectChat(c.id)}
 						>
 							{c.name}
@@ -70,7 +67,7 @@ export function ChatList({
 									<Button
 										variant="ghost"
 										size="icon"
-										className="h-7 w-7 text-wisteria-textMuted opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:text-wisteria-text hover:bg-wisteria-panelStrong/50 transition-opacity"
+										className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity"
 										onPointerDown={(e) => e.stopPropagation()}
 										onClick={(e) => e.stopPropagation()}
 									>
@@ -80,10 +77,9 @@ export function ChatList({
 								<DropdownMenuContent
 									align="end"
 									sideOffset={4}
-									className="min-w-32 bg-wisteria-panel text-wisteria-text border border-wisteria-border shadow-md"
 								>
 									<DropdownMenuItem
-										className="cursor-pointer text-wisteria-text focus:bg-wisteria-highlight focus:text-wisteria-text"
+										className="cursor-pointer"
 										onClick={() => {
 											void onDeleteChat(c.id);
 										}}
@@ -96,7 +92,7 @@ export function ChatList({
 					</div>
 				))}
 				{filteredChats.length === 0 && (
-					<div className="rounded-md border border-dashed border-wisteria-border bg-wisteria-panelStrong/30 px-3 py-2 text-xs text-wisteria-textMuted text-center">
+					<div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground text-center">
 						{selectedProjectId
 							? "No chats for this project."
 							: "No standalone chats."}

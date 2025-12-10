@@ -75,14 +75,13 @@ export function ProjectList({
 		<>
 			<section className="rounded-lg p-4">
 				<div className="flex items-center justify-between mb-4">
-					<div className="text-xs font-semibold text-wisteria-textSubtle uppercase tracking-wider">
+					<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 						Projects
 					</div>
 					<Button
 						variant="ghost"
 						size="icon"
 						onClick={() => setIsDialogOpen(true)}
-						className="text-wisteria-textSubtle hover:text-wisteria-text hover:bg-wisteria-highlight"
 					>
 						<Plus />
 					</Button>
@@ -90,17 +89,15 @@ export function ProjectList({
 				<div className="space-y-1.5">
 					<div
 						className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
-							selectedProjectId === null
-								? "bg-wisteria-highlight"
-								: "hover:bg-wisteria-panelStrong/50"
+							selectedProjectId === null ? "bg-accent" : "hover:bg-muted/50"
 						}`}
 						onClick={() => void onSelectProject(null)}
 					>
 						<div className="min-w-0 flex-1">
-							<div className="text-sm font-medium text-wisteria-text truncate">
+							<div className="text-sm font-medium text-foreground truncate">
 								Standalone Chats
 							</div>
-							<div className="text-xs text-wisteria-textMuted mt-0.5">
+							<div className="text-xs text-muted-foreground mt-0.5">
 								{chats.filter((c) => c.project_id === null).length} chat
 								{chats.filter((c) => c.project_id === null).length !== 1
 									? "s"
@@ -112,17 +109,15 @@ export function ProjectList({
 						<div
 							key={p.id}
 							className={`group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all ${
-								p.id === selectedProjectId
-									? "bg-wisteria-highlight"
-									: "hover:bg-wisteria-panelStrong/50"
+								p.id === selectedProjectId ? "bg-accent" : "hover:bg-muted/50"
 							}`}
 							onClick={() => void onSelectProject(p.id)}
 						>
 							<div className="min-w-0 flex-1">
-								<div className="text-sm font-medium text-wisteria-text truncate">
+								<div className="text-sm font-medium text-foreground truncate">
 									{p.name}
 								</div>
-								<div className="text-xs text-wisteria-textMuted mt-0.5">
+								<div className="text-xs text-muted-foreground mt-0.5">
 									{chats.filter((c) => c.project_id === p.id).length} chat
 									{chats.filter((c) => c.project_id === p.id).length !== 1
 										? "s"
@@ -132,7 +127,7 @@ export function ProjectList({
 							<Button
 								variant="ghost"
 								size="sm"
-								className="ml-2 shrink-0 h-7 text-xs text-wisteria-textMuted opacity-0 group-hover:opacity-100 hover:text-wisteria-danger transition-opacity"
+								className="ml-2 shrink-0 h-7 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
 								onClick={(e) => {
 									e.stopPropagation();
 									void onDeleteProject(p.id);
@@ -143,7 +138,7 @@ export function ProjectList({
 						</div>
 					))}
 					{projects.length === 0 && (
-						<div className="rounded-md border border-dashed border-wisteria-border bg-wisteria-panelStrong/30 px-3 py-2 text-xs text-wisteria-textMuted text-center">
+						<div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground text-center">
 							No projects yet.
 						</div>
 					)}
@@ -154,12 +149,10 @@ export function ProjectList({
 				open={isDialogOpen}
 				onOpenChange={setIsDialogOpen}
 			>
-				<DialogContent className="border-wisteria-border bg-wisteria-panel text-wisteria-text">
+				<DialogContent>
 					<DialogHeader>
-						<DialogTitle className="text-wisteria-text">
-							Create New Project
-						</DialogTitle>
-						<DialogDescription className="text-wisteria-textSubtle">
+						<DialogTitle>Create New Project</DialogTitle>
+						<DialogDescription>
 							Create a new project with a name and system prompt.
 						</DialogDescription>
 					</DialogHeader>
@@ -167,13 +160,12 @@ export function ProjectList({
 						<div className="flex flex-col gap-2">
 							<label
 								htmlFor="project-name"
-								className="text-sm font-medium text-wisteria-text"
+								className="text-sm font-medium"
 							>
 								Project Name
 							</label>
 							<Input
 								id="project-name"
-								className="border-wisteria-border bg-wisteria-panel text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
 								value={projectName}
 								onChange={(e) => setProjectName(e.target.value)}
 								placeholder="Enter project name"
@@ -188,13 +180,13 @@ export function ProjectList({
 						<div className="flex flex-col gap-2">
 							<label
 								htmlFor="project-system-prompt"
-								className="text-sm font-medium text-wisteria-text"
+								className="text-sm font-medium"
 							>
 								System Prompt
 							</label>
 							<Textarea
 								id="project-system-prompt"
-								className="w-full border-wisteria-border bg-wisteria-panel placeholder:text-wisteria-accent/50 text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
+								className="w-full"
 								value={systemPrompt}
 								onChange={(e) => setSystemPrompt(e.target.value)}
 								placeholder="Optional system prompt for all chats in this project"
@@ -206,14 +198,12 @@ export function ProjectList({
 						<Button
 							variant="outline"
 							onClick={handleCancel}
-							className="border-wisteria-border text-wisteria-text hover:bg-wisteria-highlight"
 						>
 							Cancel
 						</Button>
 						<Button
 							onClick={() => void handleCreate()}
 							disabled={!projectName.trim()}
-							className="bg-wisteria-accent font-medium text-white hover:bg-wisteria-accentSoft transition-colors disabled:opacity-50"
 						>
 							Create
 						</Button>

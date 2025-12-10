@@ -74,12 +74,12 @@ export function AppSidebar({
 				/>
 
 				{activeProject && (
-					<section className="rounded-lg border border-wisteria-border bg-wisteria-panel p-4">
-						<div className="text-xs font-semibold text-wisteria-textSubtle uppercase tracking-wider mb-4">
+					<section className="rounded-lg border bg-card p-4">
+						<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
 							System prompt
 						</div>
 						<Textarea
-							className="w-full border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent"
+							className="w-full text-sm"
 							value={systemPrompt}
 							onChange={(e) => setSystemPrompt(e.target.value)}
 							onBlur={() => void onPersistSystemPrompt()}
@@ -89,7 +89,7 @@ export function AppSidebar({
 						<Button
 							variant="link"
 							size="sm"
-							className="mt-2 h-7 text-xs font-medium text-wisteria-accent hover:text-wisteria-accentStrong"
+							className="mt-2 h-7 text-xs font-medium"
 							onClick={() => void onPersistSystemPrompt()}
 						>
 							Save prompt
@@ -105,11 +105,11 @@ export function AppSidebar({
 						onClick={() =>
 							setTheme((prev) => (prev === "light" ? "dark" : "light"))
 						}
-						className="h-8 w-8 p-0 text-wisteria-textSubtle hover:text-wisteria-text hover:bg-wisteria-highlight transition-colors"
+						className="h-8 w-8 p-0"
 					>
 						{theme === "light" ? "🌙" : "☀️"}
 					</Button>
-					<div className="rounded-md border border-wisteria-border bg-wisteria-panel px-3 py-1.5 text-xs font-medium text-wisteria-textSubtle">
+					<div className="rounded-md border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
 						{formattedStatus}
 					</div>
 				</div>

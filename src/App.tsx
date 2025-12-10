@@ -523,7 +523,7 @@ function App() {
 	}, [chats, temporaryChats]);
 
 	return (
-		<div className="flex h-screen flex-col bg-wisteria-accent/20 text-wisteria-text relative grainy-bg">
+		<div className="flex h-screen flex-col bg-primary/20 text-foreground relative grainy-bg">
 			<header
 				className="flex items-center justify-between gap-4 top-0 right-0 p-4"
 				style={dragRegionStyle}
@@ -550,12 +550,12 @@ function App() {
 					onPersistSystemPrompt={persistSystemPrompt}
 				/>
 
-				<main className="flex-1 border rounded-lg bg-wisteria-bg overflow-y-auto relative">
+				<main className="flex-1 border rounded-lg bg-background overflow-y-auto relative">
 					<div className="overflow-y-auto p-8">
 						<div className="mx-auto max-w-3xl space-y-6">
 							{messages.length === 0 && (
 								<div className="flex h-full items-center justify-center">
-									<div className="rounded-lg border border-dashed border-wisteria-border bg-wisteria-panelStrong/30 px-6 py-4 text-center text-sm text-wisteria-textMuted">
+									<div className="rounded-lg border border-dashed bg-muted/30 px-6 py-4 text-center text-sm text-muted-foreground">
 										No messages yet. Start a conversation below.
 									</div>
 								</div>
@@ -570,7 +570,7 @@ function App() {
 									<div
 										className={`whitespace-pre-wrap rounded-lg px-4 text-sm leading-relaxed ${
 											msg.role === "user"
-												? "bg-wisteria-bubbleUser max-w-[80%] px-4 py-3"
+												? "bg-[var(--color-wisteria-bubbleUser)] max-w-[80%] px-4 py-3"
 												: "w-full"
 										}`}
 									>
@@ -582,7 +582,7 @@ function App() {
 					</div>
 
 					<div className="sticky bottom-0 left-0 right-0 px-5 pb-5">
-						<div className="mx-auto max-w-4xl space-y-4 backdrop-blur-2xl border border-wisteria-border bg-wisteria-bubbleUser rounded-lg flex flex-col px-4 py-3">
+						<div className="mx-auto max-w-4xl space-y-4 backdrop-blur-2xl border bg-[var(--color-wisteria-bubbleUser)] rounded-lg flex flex-col px-4 py-3">
 							<Textarea
 								id="chat-input"
 								ref={composerRef}
@@ -592,7 +592,7 @@ function App() {
 								placeholder="Type a message and hit Enter to send"
 								rows={4}
 								disabled={!selectedChatId || isSending}
-								className="w-full border-none ring-0! p-1 outline-none shadow-none bg-transparent text-sm text-wisteria-text resize-none"
+								className="w-full border-none ring-0! p-1 outline-none shadow-none bg-transparent text-sm resize-none"
 							/>
 
 							<div className="flex items-center justify-between gap-2">
@@ -613,7 +613,7 @@ function App() {
 								<Button
 									onClick={() => void sendMessage()}
 									disabled={!input.trim() || isSending || !selectedChatId}
-									className="shrink-0 self-end bg-wisteria-accent font-medium text-white hover:bg-wisteria-accentSoft transition-colors disabled:opacity-50"
+									className="shrink-0 self-end"
 								>
 									{isSending ? "Sending…" : "Send"}
 								</Button>

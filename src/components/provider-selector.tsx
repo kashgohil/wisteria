@@ -19,10 +19,10 @@ export function ProviderSelector({
 }: ProviderSelectorProps) {
 	return (
 		<Select value={selectedProvider || undefined} onValueChange={onValueChange}>
-			<SelectTrigger className="shrink-0 w-fit border border-wisteria-border bg-wisteria-panel text-sm text-wisteria-text focus-visible:ring-1 focus-visible:ring-wisteria-accent focus-visible:border-wisteria-accent">
+			<SelectTrigger className="shrink-0 w-fit text-sm">
 				<SelectValue placeholder="Provider…" />
 			</SelectTrigger>
-			<SelectContent className="border border-wisteria-border bg-wisteria-panel text-wisteria-text shadow-lg">
+			<SelectContent>
 				{providers.map((provider) => (
 					<SelectItem key={provider} value={provider}>
 						{provider}
