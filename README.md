@@ -5,6 +5,16 @@ your choice. Built with Electron, React, and TypeScript, Wisteria gives you
 complete control over your AI conversations with support for multiple providers
 and BYOK (Bring Your Own Key).
 
+## Screenshots
+
+### Light Mode
+
+![Wisteria Light Mode](public/screenshot-light.png)
+
+### Dark Mode
+
+![Wisteria Dark Mode](public/screenshot-dark.png)
+
 ## Features
 
 - **Multi-Provider Support**: Connect to OpenAI, Anthropic, Google, Groq, and
