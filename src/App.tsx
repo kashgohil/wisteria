@@ -70,7 +70,7 @@ function App() {
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
 	const [systemPrompt, setSystemPrompt] = useState("");
-	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 	const [selectedProvider, setSelectedProvider] =
 		useState<ProviderId>("ollama");
 	const [selectedModelId, setSelectedModelId] = useState("");
