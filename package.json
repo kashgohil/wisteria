@@ -35,6 +35,10 @@
 	"build": {
 		"appId": "com.wisteria.app",
 		"productName": "Wisteria",
+		"files": [
+			"dist",
+			"dist-electron"
+		],
 		"mac": {
 			"icon": "public/wisteria.icns"
 		},

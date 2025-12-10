@@ -593,14 +593,14 @@ function App() {
 						<Sidebar />
 					</Button>
 					<div className="overflow-y-auto p-8 h-full pb-40">
-						<div className="mx-auto max-w-3xl space-y-6">
-							{messages.length === 0 && (
-								<div className="flex h-full items-center justify-center">
-									<div className="rounded-lg border border-dashed bg-muted/30 px-6 py-4 text-center text-sm text-muted-foreground">
-										No messages yet. Start a conversation below.
-									</div>
+						{messages.length === 0 && (
+							<div className="flex h-full items-center justify-center">
+								<div className="rounded-lg border border-dashed bg-muted/30 px-6 py-4 text-center text-sm text-muted-foreground">
+									No messages yet. Start a conversation below.
 								</div>
-							)}
+							</div>
+						)}
+						<div className="mx-auto max-w-3xl space-y-6">
 							{messages.map((msg) => (
 								<div
 									key={msg.id}

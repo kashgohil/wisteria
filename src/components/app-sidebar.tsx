@@ -56,7 +56,7 @@ export function AppSidebar({
 	return (
 		<aside
 			className={cn(
-				"shrink-0 overflow-y-auto w-full max-w-full sm:max-w-1/2 md:max-w-1/4 xl:max-w-1/6 flex flex-col gap-5 justify-between p-5",
+				"shrink-0 overflow-y-auto w-full max-w-full sm:max-w-1/3 lg:max-w-1/4 xl:max-w-1/6 flex flex-col gap-5 justify-between p-5",
 				className,
 			)}
 		>
