@@ -1,32 +1,32 @@
 import { ipcMain } from "electron";
 import { randomUUID } from "node:crypto";
+import type { ChatModelRequest } from "../shared/models";
+import { PROVIDER_KEY_MAP } from "../shared/providers";
 import {
 	appendMessage,
 	createChat,
 	createProject,
 	deleteChat,
+	deleteKey,
 	deleteProject,
 	listAllChats,
 	listChats,
+	listKeys,
 	listMessages,
 	listProjects,
 	readKey,
-	deleteKey,
-	listKeys,
 	saveKey,
 	updateChat,
 	updateProject,
 } from "./db";
 import {
-	ChatModelRequest,
 	listAnthropicModels,
 	listLmStudioModels,
 	listOllamaModels,
 	listOpenAIModels,
-	listOpenRouterDefaults,
+	listOpenRouterModels,
 	sendToModel,
 } from "./models/connectors";
-import { PROVIDER_KEY_MAP } from "../shared/providers";
 
 export function registerIpcHandlers() {
 	ipcMain.handle("projects:list", () => listProjects());
@@ -86,13 +86,15 @@ export function registerIpcHandlers() {
 	);
 
 	ipcMain.handle("models:list", async () => {
-		const [ollama, lmstudio, openai, anthropic, openrouter] = await Promise.all([
-			listOllamaModels(),
-			listLmStudioModels(),
-			listOpenAIModels(),
-			listAnthropicModels(),
-			listOpenRouterDefaults(),
-		]);
+		const [ollama, lmstudio, openai, anthropic, openrouter] = await Promise.all(
+			[
+				listOllamaModels(),
+				listLmStudioModels(),
+				listOpenAIModels(),
+				listAnthropicModels(),
+				listOpenRouterModels(readKey("openrouter_api_key")),
+			],
+		);
 		return [...ollama, ...lmstudio, ...openai, ...anthropic, ...openrouter];
 	});
 

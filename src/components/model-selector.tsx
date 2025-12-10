@@ -5,12 +5,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { ProviderId } from "../../shared/providers";
-
-type ModelOption = { id: string; label: string; provider: ProviderId };
+import type { ModelInfo, ModelPricing } from "../../shared/models";
 
 type ModelSelectorProps = {
-	models: ModelOption[];
+	models: ModelInfo[];
 	selectedModelId: string;
 	onValueChange: (value: string) => void;
 	disabled?: boolean;
@@ -22,6 +20,22 @@ export function ModelSelector({
 	onValueChange,
 	disabled = false,
 }: ModelSelectorProps) {
+	const formatPricing = (pricing?: ModelPricing) => {
+		if (!pricing) return "";
+		const input = pricing.input ?? pricing.prompt;
+		const output = pricing.output ?? pricing.completion;
+
+		let pricingString = "";
+		if (input) {
+			pricingString += `${input} input / `;
+		}
+		if (output) {
+			pricingString += `${output} output`;
+		}
+
+		return pricingString;
+	};
+
 	return (
 		<Select
 			value={selectedModelId || undefined}
@@ -32,15 +46,28 @@ export function ModelSelector({
 				<SelectValue placeholder="Model…" />
 			</SelectTrigger>
 			<SelectContent>
-				{models.map((m) => (
-					<SelectItem
-						key={m.id}
-						value={m.id}
-						className="text-sm! p-2"
-					>
-						{m.label}
-					</SelectItem>
-				))}
+				{models
+					.filter(
+						(m) =>
+							m.architecture?.input_modalities?.includes("text") &&
+							m.architecture?.output_modalities?.includes("text"),
+					)
+					.map((m) => (
+						<SelectItem
+							key={m.id}
+							value={m.id}
+							className="text-sm! p-2"
+						>
+							<div className="flex flex-col gap-0.5">
+								<span>{m.name}</span>
+								{formatPricing(m.pricing) && (
+									<span className="text-xs text-muted-foreground">
+										{formatPricing(m.pricing)}
+									</span>
+								)}
+							</div>
+						</SelectItem>
+					))}
 			</SelectContent>
 		</Select>
 	);

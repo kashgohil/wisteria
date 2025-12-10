@@ -1,7 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ProviderId } from "../shared/providers";
+import type {
+	ChatModelRequest,
+	ChatModelResponse,
+	ModelInfo,
+} from "../shared/models";
 import type { Chat, Message, Project } from "./db";
-import type { ChatModelRequest, ChatModelResponse } from "./models/connectors";
 
 export type ProjectUpdate = Partial<Pick<Project, "name" | "system_prompt">>;
 
@@ -45,10 +48,7 @@ const api = {
 			) as Promise<Message>,
 	},
 	models: {
-		list: () =>
-			ipcRenderer.invoke("models:list") as Promise<
-				{ id: string; label: string; provider: ProviderId }[]
-			>,
+		list: () => ipcRenderer.invoke("models:list") as Promise<ModelInfo[]>,
 		send: (payload: ChatModelRequest) =>
 			ipcRenderer.invoke("models:send", payload) as Promise<ChatModelResponse>,
 		onStreamChunk: (
@@ -94,7 +94,9 @@ const api = {
 		delete: (key: string) =>
 			ipcRenderer.invoke("keys:delete", key) as Promise<boolean>,
 		list: () =>
-			ipcRenderer.invoke("keys:list") as Promise<{ key: string; value: string }[]>,
+			ipcRenderer.invoke("keys:list") as Promise<
+				{ key: string; value: string }[]
+			>,
 	},
 };
 

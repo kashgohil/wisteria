@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
+import type { ModelPricing } from "../shared/models";
 import type { ProviderId } from "../shared/providers";
 import "./index.css";
 import { cn } from "./lib/utils";
@@ -24,7 +25,12 @@ type Message = Awaited<
 	ReturnType<typeof window.wisteria.messages.list>
 >[number];
 
-type ModelOption = { id: string; label: string; provider: ProviderId };
+type ModelOption = {
+	id: string;
+	label: string;
+	provider: ProviderId;
+	pricing?: ModelPricing;
+};
 type ThemeMode = "light" | "dark";
 
 // Temporary chat type (not persisted in DB)

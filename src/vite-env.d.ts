@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
 
 import type { Chat, Message, Project } from "../electron/db";
+import type { ProjectUpdate } from "../electron/preload";
 import type {
 	ChatModelRequest,
 	ChatModelResponse,
-} from "../electron/models/connectors";
-import type { ProjectUpdate } from "../electron/preload";
-import type { ProviderId } from "../shared/providers";
+	ModelInfo,
+} from "../shared/models";
 
 declare global {
 	interface Window {
@@ -35,9 +35,7 @@ declare global {
 				) => Promise<Message>;
 			};
 			models: {
-				list: () => Promise<
-					{ id: string; label: string; provider: ProviderId }[]
-				>;
+				list: () => Promise<ModelInfo[]>;
 				send: (payload: ChatModelRequest) => Promise<ChatModelResponse>;
 				onStreamChunk: (
 					handler: (payload: {

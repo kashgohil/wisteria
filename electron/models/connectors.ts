@@ -1,34 +1,9 @@
-import type { ProviderId } from "../../shared/providers";
-
-export type ModelProvider = ProviderId;
-
-export type ChatMessage = {
-	role: "system" | "user" | "assistant";
-	content: string;
-};
-
-export type ChatModelRequest = {
-	provider: ModelProvider;
-	model: string;
-	messages: ChatMessage[];
-	apiKey?: string | null;
-	/**
-	 * Enable provider streaming mode. When true, callers should pass an
-	 * onDelta callback to receive partial tokens as they arrive.
-	 */
-	stream?: boolean;
-	/**
-	 * Optional identifier forwarded back to the renderer so it can correlate
-	 * streaming updates to the originating request.
-	 */
-	requestId?: string;
-};
-
-export type ChatModelResponse = {
-	content: string;
-	raw?: unknown;
-	requestId?: string;
-};
+import type {
+	ChatModelRequest,
+	ChatModelResponse,
+	ModelInfo,
+	ModelPricing,
+} from "../../shared/models";
 
 const OLLAMA_URL = "http://localhost:11434";
 const LMSTUDIO_URL = "http://localhost:1234";
@@ -37,53 +12,41 @@ const OPENAI_URL = "https://api.openai.com/v1";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1";
 const REQUEST_TIMEOUT_MS = 2000;
 
-const OPENROUTER_DEFAULT_MODELS: {
-	id: string;
-	label: string;
-	provider: ModelProvider;
-}[] = [
+const OPENROUTER_FALLBACK_MODELS: ModelInfo[] = [
 	{
 		id: "openrouter/auto",
-		label: "OpenRouter Auto",
+		name: "OpenRouter Auto",
 		provider: "openrouter",
 	},
 	{
 		id: "anthropic/claude-3.5-sonnet",
-		label: "Claude 3.5 Sonnet (OpenRouter)",
+		name: "Claude 3.5 Sonnet (OpenRouter)",
 		provider: "openrouter",
 	},
 ];
 
-const OPENAI_DEFAULT_MODELS: {
-	id: string;
-	label: string;
-	provider: ModelProvider;
-}[] = [
+const OPENAI_DEFAULT_MODELS: ModelInfo[] = [
 	{
 		id: "gpt-4o",
-		label: "GPT-4o",
+		name: "GPT-4o",
 		provider: "openai",
 	},
 	{
 		id: "gpt-4o-mini",
-		label: "GPT-4o Mini",
+		name: "GPT-4o Mini",
 		provider: "openai",
 	},
 ];
 
-const ANTHROPIC_DEFAULT_MODELS: {
-	id: string;
-	label: string;
-	provider: ModelProvider;
-}[] = [
+const ANTHROPIC_DEFAULT_MODELS: ModelInfo[] = [
 	{
 		id: "claude-3-5-sonnet-20240620",
-		label: "Claude 3.5 Sonnet",
+		name: "Claude 3.5 Sonnet",
 		provider: "anthropic",
 	},
 	{
 		id: "claude-3-haiku-20240307",
-		label: "Claude 3 Haiku",
+		name: "Claude 3 Haiku",
 		provider: "anthropic",
 	},
 ];
@@ -131,16 +94,14 @@ function logConnectionIssue(label: string, err: unknown) {
 	console.warn(`${label} request issue`);
 }
 
-export async function listOllamaModels(): Promise<
-	{ id: string; label: string; provider: ModelProvider }[]
-> {
+export async function listOllamaModels(): Promise<ModelInfo[]> {
 	try {
 		const res = await fetchWithTimeout(`${OLLAMA_URL}/api/tags`);
 		if (!res.ok) throw new Error(`Ollama responded ${res.status}`);
 		const data = (await res.json()) as { models?: { name: string }[] };
 		return (data.models ?? []).map((m) => ({
 			id: m.name,
-			label: m.name,
+			name: m.name,
 			provider: "ollama",
 		}));
 	} catch (err) {
@@ -149,16 +110,14 @@ export async function listOllamaModels(): Promise<
 	}
 }
 
-export async function listLmStudioModels(): Promise<
-	{ id: string; label: string; provider: ModelProvider }[]
-> {
+export async function listLmStudioModels(): Promise<ModelInfo[]> {
 	try {
 		const res = await fetchWithTimeout(`${LMSTUDIO_URL}/v1/models`);
 		if (!res.ok) throw new Error(`LM Studio responded ${res.status}`);
 		const data = (await res.json()) as { data?: { id: string }[] };
 		return (data.data ?? []).map((m) => ({
 			id: m.id,
-			label: m.id,
+			name: m.id,
 			provider: "lmstudio",
 		}));
 	} catch (err) {
@@ -167,22 +126,103 @@ export async function listLmStudioModels(): Promise<
 	}
 }
 
-export function listOpenAIModels(): Promise<
-	{ id: string; label: string; provider: ModelProvider }[]
-> {
+export function listOpenAIModels(): Promise<ModelInfo[]> {
 	return Promise.resolve(OPENAI_DEFAULT_MODELS);
 }
 
-export function listAnthropicModels(): Promise<
-	{ id: string; label: string; provider: ModelProvider }[]
-> {
+export function listAnthropicModels(): Promise<ModelInfo[]> {
 	return Promise.resolve(ANTHROPIC_DEFAULT_MODELS);
 }
 
-export function listOpenRouterDefaults(): Promise<
-	{ id: string; label: string; provider: ModelProvider }[]
-> {
-	return Promise.resolve(OPENROUTER_DEFAULT_MODELS);
+export async function listOpenRouterModels(
+	apiKey?: string | null,
+): Promise<ModelInfo[]> {
+	try {
+		const headers: Record<string, string> = {
+			Accept: "application/json",
+			"X-Title": "Wisteria",
+		};
+		if (apiKey) {
+			headers.Authorization = `Bearer ${apiKey}`;
+		}
+
+		const res = await fetchWithTimeout(`${OPENROUTER_URL}/models`, {
+			headers,
+		});
+		if (!res.ok) throw new Error(`OpenRouter responded ${res.status}`);
+		const data = (await res.json()) as {
+			data?: {
+				id?: string;
+				name?: string;
+				description?: string;
+				architecture?: {
+					modality?: string;
+					input_modalities?: string[];
+					output_modalities?: string[];
+				};
+				context_length?: number;
+				default_parameters?: Record<string, unknown>;
+				supported_parameters?: string[];
+				pricing?: {
+					prompt?: string;
+					completion?: string;
+					input?: string;
+					output?: string;
+					image?: string;
+					web_search?: string;
+				};
+			}[];
+		};
+
+		const models = data.data
+			?.filter((m) => Boolean(m.id))
+			.map((m) => {
+				let pricing: ModelPricing = {};
+				if (m.pricing) {
+					pricing = {
+						image:
+							m.pricing?.image && Number(m.pricing.image) > 0
+								? (Number(m.pricing.image) * 1e6).toFixed(2)
+								: undefined,
+						web_search: m.pricing?.web_search
+							? (Number(m.pricing.web_search) * 1e6).toFixed(2)
+							: undefined,
+						input:
+							m.pricing?.input && Number(m.pricing.input) > 0
+								? (Number(m.pricing.input) * 1e6).toFixed(2)
+								: undefined,
+						output:
+							m.pricing?.output && Number(m.pricing.output) > 0
+								? (Number(m.pricing.output) * 1e6).toFixed(2)
+								: undefined,
+						prompt:
+							m.pricing?.prompt && Number(m.pricing.prompt) > 0
+								? (Number(m.pricing.prompt) * 1e6).toFixed(2)
+								: undefined,
+						completion:
+							m.pricing?.completion && Number(m.pricing.completion) > 0
+								? (Number(m.pricing.completion) * 1e6).toFixed(2)
+								: undefined,
+					};
+				}
+
+				return {
+					id: m.id as string,
+					name: m.name as string,
+					pricing,
+					description: m.description,
+					architecture: m.architecture,
+					context_length: m.context_length,
+					default_parameters: m.default_parameters,
+					supported_parameters: m.supported_parameters,
+					provider: "openrouter" as const,
+				};
+			});
+		if (models && models.length) return models;
+	} catch (err) {
+		console.warn("OpenRouter list issue", err);
+	}
+	return OPENROUTER_FALLBACK_MODELS;
 }
 
 type StreamCallbacks = {
