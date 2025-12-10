@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { ProviderId } from "../shared/providers";
 import type { Chat, Message, Project } from "./db";
 import type { ChatModelRequest, ChatModelResponse } from "./models/connectors";
 
@@ -46,7 +47,7 @@ const api = {
 	models: {
 		list: () =>
 			ipcRenderer.invoke("models:list") as Promise<
-				{ id: string; label: string; provider: string }[]
+				{ id: string; label: string; provider: ProviderId }[]
 			>,
 		send: (payload: ChatModelRequest) =>
 			ipcRenderer.invoke("models:send", payload) as Promise<ChatModelResponse>,

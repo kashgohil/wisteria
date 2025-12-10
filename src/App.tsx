@@ -4,12 +4,15 @@ import { ProviderSelector } from "@/components/provider-selector";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Sidebar } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
+import type { ProviderId } from "../shared/providers";
 import "./index.css";
+import { cn } from "./lib/utils";
 
 type Project = Awaited<
 	ReturnType<typeof window.wisteria.projects.list>
@@ -21,7 +24,7 @@ type Message = Awaited<
 	ReturnType<typeof window.wisteria.messages.list>
 >[number];
 
-type ModelOption = { id: string; label: string; provider: string };
+type ModelOption = { id: string; label: string; provider: ProviderId };
 type ThemeMode = "light" | "dark";
 
 // Temporary chat type (not persisted in DB)
@@ -67,7 +70,9 @@ function App() {
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
 	const [systemPrompt, setSystemPrompt] = useState("");
-	const [selectedProvider, setSelectedProvider] = useState("ollama");
+	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [selectedProvider, setSelectedProvider] =
+		useState<ProviderId>("ollama");
 	const [selectedModelId, setSelectedModelId] = useState("");
 	const [status, setStatus] = useState("Ready");
 	const [input, setInput] = useState("");
@@ -140,8 +145,11 @@ function App() {
 		[projects, selectedProjectId],
 	);
 
-	const uniqueProviders = useMemo(
-		() => Array.from(new Set(models.map((m) => m.provider))).sort(),
+	const uniqueProviders = useMemo<ProviderId[]>(
+		() =>
+			Array.from(new Set(models.map((m) => m.provider))).sort((a, b) =>
+				a.localeCompare(b),
+			),
 		[models],
 	);
 
@@ -391,7 +399,7 @@ function App() {
 		await updateProjectMeta({ system_prompt: systemPrompt });
 	};
 
-	const handleProviderChange = (value: string) => {
+	const handleProviderChange = (value: ProviderId) => {
 		setSelectedProvider(value);
 		setSelectedModelId(""); // Reset model when provider changes
 	};
@@ -454,7 +462,7 @@ function App() {
 
 		try {
 			const response = await window.wisteria.models.send({
-				provider: selectedProvider as "ollama" | "lmstudio" | "openrouter",
+				provider: selectedProvider,
 				model: modelId,
 				messages: history,
 				stream: true,
@@ -554,9 +562,18 @@ function App() {
 					onCreateChat={createChat}
 					onPersistSystemPrompt={persistSystemPrompt}
 					onOpenSettings={() => setIsSettingsOpen(true)}
+					className={cn(isSidebarOpen ? "flex" : "hidden")}
 				/>
 
 				<main className="flex-1 border rounded-lg bg-background overflow-y-auto relative">
+					<Button
+						size="icon"
+						variant="ghost"
+						onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+						className="absolute top-4 left-4"
+					>
+						<Sidebar />
+					</Button>
 					<div className="overflow-y-auto p-8 h-full pb-40">
 						<div className="mx-auto max-w-3xl space-y-6">
 							{messages.length === 0 && (

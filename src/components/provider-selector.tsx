@@ -5,11 +5,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import type { ProviderId } from "../../shared/providers";
 
 type ProviderSelectorProps = {
-	providers: string[];
-	selectedProvider: string;
-	onValueChange: (value: string) => void;
+	providers: ProviderId[];
+	selectedProvider: ProviderId;
+	onValueChange: (value: ProviderId) => void;
 };
 
 export function ProviderSelector({
@@ -20,7 +21,7 @@ export function ProviderSelector({
 	return (
 		<Select
 			value={selectedProvider || undefined}
-			onValueChange={onValueChange}
+			onValueChange={(value) => onValueChange(value as ProviderId)}
 		>
 			<SelectTrigger className="text-sm! px-2">
 				<SelectValue placeholder="Provider…" />

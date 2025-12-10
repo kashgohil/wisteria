@@ -1,4 +1,6 @@
-export type ModelProvider = "ollama" | "lmstudio" | "openrouter";
+import type { ProviderId } from "../../shared/providers";
+
+export type ModelProvider = ProviderId;
 
 export type ChatMessage = {
 	role: "system" | "user" | "assistant";
@@ -31,7 +33,60 @@ export type ChatModelResponse = {
 const OLLAMA_URL = "http://localhost:11434";
 const LMSTUDIO_URL = "http://localhost:1234";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
+const OPENAI_URL = "https://api.openai.com/v1";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1";
 const REQUEST_TIMEOUT_MS = 2000;
+
+const OPENROUTER_DEFAULT_MODELS: {
+	id: string;
+	label: string;
+	provider: ModelProvider;
+}[] = [
+	{
+		id: "openrouter/auto",
+		label: "OpenRouter Auto",
+		provider: "openrouter",
+	},
+	{
+		id: "anthropic/claude-3.5-sonnet",
+		label: "Claude 3.5 Sonnet (OpenRouter)",
+		provider: "openrouter",
+	},
+];
+
+const OPENAI_DEFAULT_MODELS: {
+	id: string;
+	label: string;
+	provider: ModelProvider;
+}[] = [
+	{
+		id: "gpt-4o",
+		label: "GPT-4o",
+		provider: "openai",
+	},
+	{
+		id: "gpt-4o-mini",
+		label: "GPT-4o Mini",
+		provider: "openai",
+	},
+];
+
+const ANTHROPIC_DEFAULT_MODELS: {
+	id: string;
+	label: string;
+	provider: ModelProvider;
+}[] = [
+	{
+		id: "claude-3-5-sonnet-20240620",
+		label: "Claude 3.5 Sonnet",
+		provider: "anthropic",
+	},
+	{
+		id: "claude-3-haiku-20240307",
+		label: "Claude 3 Haiku",
+		provider: "anthropic",
+	},
+];
 
 async function fetchWithTimeout(
 	url: string,
@@ -112,6 +167,24 @@ export async function listLmStudioModels(): Promise<
 	}
 }
 
+export function listOpenAIModels(): Promise<
+	{ id: string; label: string; provider: ModelProvider }[]
+> {
+	return Promise.resolve(OPENAI_DEFAULT_MODELS);
+}
+
+export function listAnthropicModels(): Promise<
+	{ id: string; label: string; provider: ModelProvider }[]
+> {
+	return Promise.resolve(ANTHROPIC_DEFAULT_MODELS);
+}
+
+export function listOpenRouterDefaults(): Promise<
+	{ id: string; label: string; provider: ModelProvider }[]
+> {
+	return Promise.resolve(OPENROUTER_DEFAULT_MODELS);
+}
+
 type StreamCallbacks = {
 	onDelta?: (text: string) => void;
 };
@@ -127,6 +200,10 @@ export async function sendToModel(
 			return sendLmStudio(request, callbacks);
 		case "openrouter":
 			return sendOpenRouter(request, callbacks);
+		case "openai":
+			return sendOpenAI(request, callbacks);
+		case "anthropic":
+			return sendAnthropic(request, callbacks);
 		default:
 			throw new Error("Unsupported provider");
 	}
@@ -226,6 +303,94 @@ async function sendOpenRouter(
 	return { content, raw: data, requestId: req.requestId };
 }
 
+async function sendOpenAI(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
+	if (!req.apiKey) {
+		throw new Error("OpenAI API key missing");
+	}
+
+	const res = await fetch(`${OPENAI_URL}/chat/completions`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${req.apiKey}`,
+		},
+		body: JSON.stringify({
+			model: req.model,
+			messages: req.messages,
+			stream: Boolean(req.stream),
+		}),
+	});
+
+	if (!res.ok) {
+		throw new Error(`OpenAI error ${res.status}`);
+	}
+
+	if (req.stream) {
+		const { content, raw } = await readSseStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
+	const data = (await res.json()) as {
+		choices?: { message?: { content?: string } }[];
+	};
+	const content = data.choices?.[0]?.message?.content ?? "";
+	return { content, raw: data, requestId: req.requestId };
+}
+
+async function sendAnthropic(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
+	if (!req.apiKey) {
+		throw new Error("Anthropic API key missing");
+	}
+
+	const system = req.messages
+		.filter((m) => m.role === "system")
+		.map((m) => m.content)
+		.join("\n\n");
+	const messages = req.messages
+		.filter((m) => m.role !== "system")
+		.map((m) => ({
+			role: m.role === "assistant" ? "assistant" : ("user" as const),
+			content: m.content,
+		}));
+
+	const res = await fetch(`${ANTHROPIC_URL}/messages`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-API-Key": req.apiKey,
+			"anthropic-version": "2023-06-01",
+		},
+		body: JSON.stringify({
+			model: req.model,
+			messages,
+			stream: Boolean(req.stream),
+			system: system || undefined,
+			max_tokens: 1024,
+		}),
+	});
+
+	if (!res.ok) {
+		throw new Error(`Anthropic error ${res.status}`);
+	}
+
+	if (req.stream) {
+		const { content, raw } = await readAnthropicStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
+	const data = (await res.json()) as {
+		content?: { text?: string }[];
+	};
+	const content = data.content?.[0]?.text ?? "";
+	return { content, raw: data, requestId: req.requestId };
+}
+
 async function readNdjsonStream(
 	res: Response,
 	onDelta?: (delta: string) => void,
@@ -305,6 +470,57 @@ async function readSseStream(
 				}
 			} catch (err) {
 				console.warn("SSE stream parse issue", err);
+			}
+		}
+	}
+
+	return { content: full, raw };
+}
+
+async function readAnthropicStream(
+	res: Response,
+	onDelta?: (delta: string) => void,
+): Promise<{ content: string; raw: unknown[] }> {
+	const reader = res.body?.getReader();
+	if (!reader) throw new Error("No streaming body available");
+
+	const decoder = new TextDecoder();
+	let buffer = "";
+	let full = "";
+	const raw: unknown[] = [];
+
+	for (;;) {
+		const { value, done } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+
+		const lines = buffer.split(/\r?\n/);
+		buffer = lines.pop() ?? "";
+
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed.startsWith("data:")) continue;
+			const payload = trimmed.slice(5).trim();
+			if (!payload || payload === "[DONE]") continue;
+			try {
+				const json = JSON.parse(payload) as {
+					type?: string;
+					delta?: { text?: string };
+					content_block?: { text?: string };
+				};
+				raw.push(json);
+				const delta =
+					json.type === "content_block_delta"
+						? json.delta?.text ?? ""
+						: json.type === "content_block_start"
+						? json.content_block?.text ?? ""
+						: "";
+				if (delta) {
+					full += delta;
+					onDelta?.(delta);
+				}
+			} catch (err) {
+				console.warn("Anthropic stream parse issue", err);
 			}
 		}
 	}

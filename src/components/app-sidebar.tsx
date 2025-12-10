@@ -1,6 +1,7 @@
 import { ChatList } from "@/components/chat-list";
 import { ProjectList } from "@/components/project-list";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Moon, Settings, Sun } from "lucide-react";
 
 type Project = Awaited<
@@ -32,6 +33,8 @@ interface AppSidebarProps {
 	onCreateChat: () => Promise<void>;
 	onPersistSystemPrompt: () => Promise<void>;
 	onOpenSettings: () => void;
+
+	className?: string;
 }
 
 export function AppSidebar({
@@ -48,9 +51,15 @@ export function AppSidebar({
 	onDeleteChat,
 	onCreateChat,
 	onOpenSettings,
+	className,
 }: AppSidebarProps) {
 	return (
-		<aside className="shrink-0 overflow-y-auto w-full max-w-full md:max-w-1/6 flex flex-col gap-5 justify-between p-5">
+		<aside
+			className={cn(
+				"shrink-0 overflow-y-auto w-full max-w-full sm:max-w-1/2 md:max-w-1/4 xl:max-w-1/6 flex flex-col gap-5 justify-between p-5",
+				className,
+			)}
+		>
 			<div className="flex flex-col gap-5">
 				<ProjectList
 					projects={projects}

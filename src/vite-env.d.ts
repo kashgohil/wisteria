@@ -6,6 +6,7 @@ import type {
 	ChatModelResponse,
 } from "../electron/models/connectors";
 import type { ProjectUpdate } from "../electron/preload";
+import type { ProviderId } from "../shared/providers";
 
 declare global {
 	interface Window {
@@ -34,7 +35,9 @@ declare global {
 				) => Promise<Message>;
 			};
 			models: {
-				list: () => Promise<{ id: string; label: string; provider: string }[]>;
+				list: () => Promise<
+					{ id: string; label: string; provider: ProviderId }[]
+				>;
 				send: (payload: ChatModelRequest) => Promise<ChatModelResponse>;
 				onStreamChunk: (
 					handler: (payload: {

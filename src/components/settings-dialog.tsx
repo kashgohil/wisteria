@@ -10,25 +10,32 @@ import {
 import { Input } from "@/components/ui/input";
 import { Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+	LOCAL_PROVIDERS,
+	PROVIDERS,
+	type ProviderId,
+} from "../../shared/providers";
 
 type SettingsDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	providers: string[];
+	providers: ProviderId[];
 };
 
 type ProviderKeyRow = {
-	provider: string;
+	provider: ProviderId;
 	value: string;
 };
-
-const LOCAL_PROVIDERS = ["ollama", "lmstudio"];
 
 const normalizeKeyName = (provider: string) => {
 	const trimmed = provider.trim();
 	if (!trimmed) return "";
 	return trimmed.endsWith("_api_key") ? trimmed : `${trimmed}_api_key`;
 };
+
+const PROVIDER_SET = new Set(PROVIDERS.map((p) => p.id));
+const isProviderId = (value: string): value is ProviderId =>
+	PROVIDER_SET.has(value as ProviderId);
 
 export function SettingsDialog({
 	open,
@@ -42,7 +49,7 @@ export function SettingsDialog({
 		() =>
 			Array.from(new Set(providers))
 				.filter((p) => !LOCAL_PROVIDERS.includes(p))
-				.sort(),
+				.sort() as ProviderId[],
 		[providers],
 	);
 
@@ -56,11 +63,15 @@ export function SettingsDialog({
 					provider: entry.key.replace(/_api_key$/, ""),
 					value: entry.value,
 				}))
-				.filter((entry) => !LOCAL_PROVIDERS.includes(entry.provider));
+				.filter(
+					(entry): entry is ProviderKeyRow =>
+						isProviderId(entry.provider) &&
+						!LOCAL_PROVIDERS.includes(entry.provider),
+				);
 
 			const mergedProviders = Array.from(
 				new Set([...knownProviders, ...normalized.map((n) => n.provider)]),
-			);
+			) as ProviderId[];
 
 			setRows(
 				mergedProviders.map((provider) => ({
@@ -73,13 +84,13 @@ export function SettingsDialog({
 		void load();
 	}, [knownProviders, open]);
 
-	const updateRowValue = (provider: string, value: string) => {
+	const updateRowValue = (provider: ProviderId, value: string) => {
 		setRows((prev) =>
 			prev.map((row) => (row.provider === provider ? { ...row, value } : row)),
 		);
 	};
 
-	const handleSave = async (provider: string, value: string) => {
+	const handleSave = async (provider: ProviderId, value: string) => {
 		const storageKey = normalizeKeyName(provider);
 		if (!storageKey) return;
 
@@ -92,7 +103,7 @@ export function SettingsDialog({
 		setIsBusy(false);
 	};
 
-	const handleRemove = async (provider: string) => {
+	const handleRemove = async (provider: ProviderId) => {
 		const storageKey = normalizeKeyName(provider);
 		if (!storageKey) return;
 

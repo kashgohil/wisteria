@@ -19,10 +19,14 @@ import {
 } from "./db";
 import {
 	ChatModelRequest,
+	listAnthropicModels,
 	listLmStudioModels,
 	listOllamaModels,
+	listOpenAIModels,
+	listOpenRouterDefaults,
 	sendToModel,
 } from "./models/connectors";
+import { PROVIDER_KEY_MAP } from "../shared/providers";
 
 export function registerIpcHandlers() {
 	ipcMain.handle("projects:list", () => listProjects());
@@ -82,33 +86,21 @@ export function registerIpcHandlers() {
 	);
 
 	ipcMain.handle("models:list", async () => {
-		const [ollama, lmstudio] = await Promise.all([
+		const [ollama, lmstudio, openai, anthropic, openrouter] = await Promise.all([
 			listOllamaModels(),
 			listLmStudioModels(),
+			listOpenAIModels(),
+			listAnthropicModels(),
+			listOpenRouterDefaults(),
 		]);
-		// Provide a small set of helpful OpenRouter defaults
-		const openrouter = [
-			{
-				id: "openrouter/auto",
-				label: "OpenRouter Auto",
-				provider: "openrouter" as const,
-			},
-			{
-				id: "anthropic/claude-3.5-sonnet",
-				label: "Claude 3.5 Sonnet (OpenRouter)",
-				provider: "openrouter" as const,
-			},
-		];
-		return [...ollama, ...lmstudio, ...openrouter];
+		return [...ollama, ...lmstudio, ...openai, ...anthropic, ...openrouter];
 	});
 
 	ipcMain.handle(
 		"models:send",
 		async (event, payload: ChatModelRequest & { stream?: boolean }) => {
-			const apiKey =
-				payload.provider === "openrouter"
-					? readKey("openrouter_api_key")
-					: null;
+			const keyName = PROVIDER_KEY_MAP[payload.provider] ?? null;
+			const apiKey = keyName ? readKey(keyName) : null;
 			const requestId = payload.requestId ?? randomUUID();
 
 			if (!payload.stream) {

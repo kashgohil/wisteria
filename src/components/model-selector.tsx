@@ -5,8 +5,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import type { ProviderId } from "../../shared/providers";
 
-type ModelOption = { id: string; label: string; provider: string };
+type ModelOption = { id: string; label: string; provider: ProviderId };
 
 type ModelSelectorProps = {
 	models: ModelOption[];
