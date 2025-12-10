@@ -565,7 +565,23 @@ function App() {
 					className={cn(isSidebarOpen ? "flex" : "hidden")}
 				/>
 
-				<main className="flex-1 border rounded-lg bg-background overflow-y-auto relative">
+				<main
+					className="flex-1 border rounded-lg bg-background overflow-y-auto relative"
+					style={{
+						backgroundImage:
+							theme === "dark"
+								? "url(/background-dark.png)"
+								: "url(/background.png)",
+						backgroundSize: "cover",
+						backgroundPosition: "center",
+						backgroundRepeat: "no-repeat",
+						backgroundBlendMode: theme === "dark" ? "darken" : "",
+						backgroundColor:
+							theme === "dark"
+								? "rgba(0, 0, 0, 0.6)"
+								: "rgba(255, 255, 255, 0.6)",
+					}}
+				>
 					<Button
 						size="icon"
 						variant="ghost"

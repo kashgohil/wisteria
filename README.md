@@ -55,6 +55,9 @@ bun run dev
 
 ### Building
 
+To create a standalone executable application that can be distributed and
+installed:
+
 ```bash
 # Build for production
 npm run build
@@ -62,8 +65,48 @@ npm run build
 bun run build
 ```
 
-This will create distributable packages for your platform in the `dist`
-directory.
+This command will:
+
+1. Compile TypeScript and bundle the React application
+2. Package everything with Electron
+3. Create platform-specific installers/executables
+
+**Output locations:**
+
+The build artifacts will be created in the `dist` directory:
+
+- **macOS**: `dist/Wisteria-{version}.dmg` - Drag-and-drop installer
+- **Windows**: `dist/Wisteria Setup {version}.exe` - Standard Windows installer
+- **Linux**: `dist/Wisteria-{version}.AppImage` - Portable executable
+
+**Platform-specific builds:**
+
+By default, the build command creates executables for your current platform. To
+build for specific platforms:
+
+```bash
+# Build for macOS only
+npm run build -- --mac
+
+# Build for Windows only
+npm run build -- --win
+
+# Build for Linux only
+npm run build -- --linux
+
+# Build for all platforms (requires platform-specific dependencies)
+npm run build -- --mac --win --linux
+```
+
+**Installing the executable:**
+
+- **macOS**: Open the `.dmg` file and drag Wisteria to your Applications folder
+- **Windows**: Run the `.exe` installer and follow the installation wizard
+- **Linux**: Make the `.AppImage` executable (`chmod +x Wisteria-*.AppImage`)
+  and run it
+
+**Note**: Cross-platform builds may require additional setup. For example,
+building Windows executables on macOS requires Wine.
 
 ## Usage
 
