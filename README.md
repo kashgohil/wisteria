@@ -1,24 +1,15 @@
 # Wisteria 🌸
 
+![Wisteria Welcome](public/welcome.png)
+
 A modern, privacy-focused desktop application for interacting with any LLM of
 your choice. Built with Electron, React, and TypeScript, Wisteria gives you
 complete control over your AI conversations with support for multiple providers
 and BYOK (Bring Your Own Key).
 
-## Screenshots
-
-### Light Mode
-
-![Wisteria Light Mode](public/screenshot-light.png)
-
-### Dark Mode
-
-![Wisteria Dark Mode](public/screenshot-dark.png)
-
 ## Features
 
-- **Multi-Provider Support**: Connect to OpenAI, Anthropic, Google, Groq, and
-  more
+- **Multi-Provider Support**: Connect to OpenAI, Anthropic, OpenRouter
 - **Bring Your Own Key**: Use your own API keys for complete control and privacy
 - **Local-First**: All conversations and data stored locally using SQLite
 - **Project Organization**: Organize your chats into projects for better
@@ -28,6 +19,11 @@ and BYOK (Bring Your Own Key).
 - **Markdown Support**: Rich text rendering with syntax highlighting for code
   blocks
 - **Cross-Platform**: Available for macOS, Windows, and Linux
+- **Theme Support**: Delightful dark and light theme
+
+![Wisteria Light Mode](public/screenshot-light.png)
+
+![Wisteria Dark Mode](public/screenshot-dark.png)
 
 ## Tech Stack
 
