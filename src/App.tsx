@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import type { ModelPricing } from "../shared/models";
+import type { ModelInfo } from "../shared/models";
 import type { ProviderId } from "../shared/providers";
 import "./index.css";
 import { cn } from "./lib/utils";
@@ -25,12 +25,6 @@ type Message = Awaited<
 	ReturnType<typeof window.wisteria.messages.list>
 >[number];
 
-type ModelOption = {
-	id: string;
-	label: string;
-	provider: ProviderId;
-	pricing?: ModelPricing;
-};
 type ThemeMode = "light" | "dark";
 
 // Temporary chat type (not persisted in DB)
@@ -68,7 +62,7 @@ function App() {
 	const [chats, setChats] = useState<Chat[]>([]);
 	const [temporaryChats, setTemporaryChats] = useState<TemporaryChat[]>([]);
 	const [messages, setMessages] = useState<Message[]>([]);
-	const [models, setModels] = useState<ModelOption[]>([]);
+	const [models, setModels] = useState<ModelInfo[]>([]);
 
 	const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
 		null,
@@ -690,5 +684,26 @@ function App() {
 		</div>
 	);
 }
+
+// function Background() {
+// 	return (
+// 		<div
+// 			className="flex h-screen flex-col bg-primary/20 text-foreground relative grainy-bg items-center justify-center text-center"
+// 			style={{
+// 				backgroundImage: `url(${import.meta.env.BASE_URL}background.png)`,
+// 				backgroundSize: "cover",
+// 				backgroundPosition: "center",
+// 				backgroundRepeat: "no-repeat",
+// 				backgroundBlendMode: "lighten",
+// 				backgroundColor: "rgba(0, 0, 0, 0.6)",
+// 			}}
+// 		>
+// 			<div className="text-8xl font-oleo text-[#A891C5]">Wisteria</div>
+// 			<div className="text-xl font-oleo text-[#A891C5]">
+// 				Chat with LLM of your choice, Safely and Privately.
+// 			</div>
+// 		</div>
+// 	);
+// }
 
 export default App;
