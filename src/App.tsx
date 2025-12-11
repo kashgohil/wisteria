@@ -58,6 +58,7 @@ function generateChatName(message: string): string {
 }
 
 function App() {
+	const [loading, setLoading] = useState(true);
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [chats, setChats] = useState<Chat[]>([]);
 	const [temporaryChats, setTemporaryChats] = useState<TemporaryChat[]>([]);
@@ -96,6 +97,7 @@ function App() {
 
 	useEffect(() => {
 		void bootstrap();
+		setTimeout(() => setLoading(false), 4000);
 	}, []);
 
 	useEffect(() => {
@@ -535,10 +537,46 @@ function App() {
 		return [...chats, ...temporaryChats];
 	}, [chats, temporaryChats]);
 
+	if (loading) {
+		return (
+			<div
+				className="flex h-screen flex-col bg-primary/20 grainy-bg items-center justify-center text-center text-[#A891C5] font-oleo"
+				style={{
+					backgroundImage: `url(${import.meta.env.BASE_URL}background.png)`,
+					backgroundSize: "cover",
+					backgroundPosition: "center",
+					backgroundRepeat: "no-repeat",
+					backgroundBlendMode: "lighten",
+					backgroundColor: "rgba(0, 0, 0, 0.6)",
+				}}
+			>
+				<div className="text-8xl ">Wisteria</div>
+				<div className="text-xl">
+					Chat with LLM of your choice, Safely and Privately.
+				</div>
+			</div>
+		);
+	}
+
 	return (
-		<div className="flex h-screen flex-col bg-primary/20 text-foreground relative grainy-bg">
+		<div
+			className="flex h-screen flex-col bg-primary/20 text-foreground relative grainy-bg"
+			style={{
+				backgroundImage: `url(${
+					theme === "dark"
+						? `${import.meta.env.BASE_URL}background-dark.png`
+						: `${import.meta.env.BASE_URL}background.png`
+				})`,
+				backgroundSize: "cover",
+				backgroundPosition: "center",
+				backgroundRepeat: "no-repeat",
+				backgroundBlendMode: theme === "dark" ? "darken" : "",
+				backgroundColor:
+					theme === "dark" ? "rgba(0, 0, 0, 0.6)" : "rgba(255, 255, 255, 0.6)",
+			}}
+		>
 			<header
-				className="flex items-center justify-center text-sm! gap-4 top-0 right-0 p-2 text-center"
+				className="flex items-center justify-center font-oleo font-bold tracking-wider text-sm! gap-4 top-0 right-0 p-2 text-center"
 				style={dragRegionStyle}
 			>
 				Wisteria
@@ -567,24 +605,7 @@ function App() {
 					className={cn(isSidebarOpen ? "flex" : "hidden")}
 				/>
 
-				<main
-					className="flex-1 border rounded-lg bg-background overflow-y-auto relative"
-					style={{
-						backgroundImage: `url(${
-							theme === "dark"
-								? `${import.meta.env.BASE_URL}background-dark.png`
-								: `${import.meta.env.BASE_URL}background.png`
-						})`,
-						backgroundSize: "cover",
-						backgroundPosition: "center",
-						backgroundRepeat: "no-repeat",
-						backgroundBlendMode: theme === "dark" ? "darken" : "",
-						backgroundColor:
-							theme === "dark"
-								? "rgba(0, 0, 0, 0.6)"
-								: "rgba(255, 255, 255, 0.6)",
-					}}
-				>
+				<main className="flex-1 border rounded-lg bg-background/30 backdrop-blur-3xl overflow-y-auto relative">
 					<Button
 						size="icon"
 						variant="ghost"
