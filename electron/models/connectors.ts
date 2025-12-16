@@ -7,9 +7,13 @@ import type {
 
 const OLLAMA_URL = "http://localhost:11434";
 const LMSTUDIO_URL = "http://localhost:1234";
+const LLAMACPP_URL = "http://localhost:8080";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const OPENAI_URL = "https://api.openai.com/v1";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta";
+const GROK_URL = "https://api.x.ai/v1";
+const GROQ_URL = "https://api.groq.com/openai/v1";
 const REQUEST_TIMEOUT_MS = 2000;
 
 const OPENROUTER_FALLBACK_MODELS: ModelInfo[] = [
@@ -40,14 +44,83 @@ const OPENAI_DEFAULT_MODELS: ModelInfo[] = [
 
 const ANTHROPIC_DEFAULT_MODELS: ModelInfo[] = [
 	{
-		id: "claude-3-5-sonnet-20240620",
+		id: "claude-sonnet-4-5-20250514",
+		name: "Claude Sonnet 4.5",
+		provider: "anthropic",
+	},
+	{
+		id: "claude-opus-4-5-20251101",
+		name: "Claude Opus 4.5",
+		provider: "anthropic",
+	},
+	{
+		id: "claude-3-5-sonnet-20241022",
 		name: "Claude 3.5 Sonnet",
 		provider: "anthropic",
 	},
 	{
-		id: "claude-3-haiku-20240307",
-		name: "Claude 3 Haiku",
+		id: "claude-3-5-haiku-20241022",
+		name: "Claude 3.5 Haiku",
 		provider: "anthropic",
+	},
+	{
+		id: "claude-3-opus-20240229",
+		name: "Claude 3 Opus",
+		provider: "anthropic",
+	},
+];
+
+const GEMINI_DEFAULT_MODELS: ModelInfo[] = [
+	{
+		id: "gemini-2.0-flash-exp",
+		name: "Gemini 2.0 Flash (Experimental)",
+		provider: "gemini",
+	},
+	{
+		id: "gemini-1.5-pro",
+		name: "Gemini 1.5 Pro",
+		provider: "gemini",
+	},
+	{
+		id: "gemini-1.5-flash",
+		name: "Gemini 1.5 Flash",
+		provider: "gemini",
+	},
+];
+
+const GROK_DEFAULT_MODELS: ModelInfo[] = [
+	{
+		id: "grok-beta",
+		name: "Grok Beta",
+		provider: "grok",
+	},
+	{
+		id: "grok-vision-beta",
+		name: "Grok Vision Beta",
+		provider: "grok",
+	},
+];
+
+const GROQ_DEFAULT_MODELS: ModelInfo[] = [
+	{
+		id: "llama-3.3-70b-versatile",
+		name: "Llama 3.3 70B Versatile",
+		provider: "groq",
+	},
+	{
+		id: "llama-3.1-8b-instant",
+		name: "Llama 3.1 8B Instant",
+		provider: "groq",
+	},
+	{
+		id: "mixtral-8x7b-32768",
+		name: "Mixtral 8x7B",
+		provider: "groq",
+	},
+	{
+		id: "gemma2-9b-it",
+		name: "Gemma 2 9B",
+		provider: "groq",
 	},
 ];
 
@@ -126,12 +199,213 @@ export async function listLmStudioModels(): Promise<ModelInfo[]> {
 	}
 }
 
-export function listOpenAIModels(): Promise<ModelInfo[]> {
-	return Promise.resolve(OPENAI_DEFAULT_MODELS);
+export async function listLlamaCppModels(): Promise<ModelInfo[]> {
+	try {
+		const res = await fetchWithTimeout(`${LLAMACPP_URL}/v1/models`);
+		if (!res.ok) throw new Error(`llama.cpp responded ${res.status}`);
+		const data = (await res.json()) as { data?: { id: string }[] };
+		return (data.data ?? []).map((m) => ({
+			id: m.id,
+			name: m.id,
+			provider: "llamacpp",
+		}));
+	} catch (err) {
+		logConnectionIssue("llama.cpp list", err);
+		return [];
+	}
 }
 
-export function listAnthropicModels(): Promise<ModelInfo[]> {
-	return Promise.resolve(ANTHROPIC_DEFAULT_MODELS);
+export async function listOpenAIModels(
+	apiKey?: string | null,
+): Promise<ModelInfo[]> {
+	if (!apiKey) {
+		return OPENAI_DEFAULT_MODELS;
+	}
+
+	try {
+		const res = await fetchWithTimeout(`${OPENAI_URL}/models`, {
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				"Content-Type": "application/json",
+			},
+		});
+		if (!res.ok) {
+			console.warn(`OpenAI models API responded ${res.status}`);
+			return OPENAI_DEFAULT_MODELS;
+		}
+
+		const data = (await res.json()) as {
+			data?: {
+				id?: string;
+				created?: number;
+				owned_by?: string;
+			}[];
+		};
+
+		// Filter for chat models (gpt-* models)
+		const models = data.data
+			?.filter((m) => m.id?.startsWith("gpt-"))
+			.map((m) => ({
+				id: m.id as string,
+				name: m.id as string,
+				provider: "openai" as const,
+			}));
+
+		if (models && models.length > 0) {
+			return models;
+		}
+	} catch (err) {
+		console.warn("OpenAI list issue", err);
+	}
+
+	return OPENAI_DEFAULT_MODELS;
+}
+
+export async function listAnthropicModels(
+	_apiKey?: string | null,
+): Promise<ModelInfo[]> {
+	// Anthropic doesn't have a public models listing API
+	// We return default models regardless of API key
+	return ANTHROPIC_DEFAULT_MODELS;
+}
+
+export async function listGeminiModels(
+	apiKey?: string | null,
+): Promise<ModelInfo[]> {
+	if (!apiKey) {
+		return GEMINI_DEFAULT_MODELS;
+	}
+
+	try {
+		const res = await fetchWithTimeout(
+			`${GEMINI_URL}/models?key=${apiKey}`,
+			{
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+		if (!res.ok) {
+			console.warn(`Gemini models API responded ${res.status}`);
+			return GEMINI_DEFAULT_MODELS;
+		}
+
+		const data = (await res.json()) as {
+			models?: {
+				name?: string;
+				displayName?: string;
+				description?: string;
+			}[];
+		};
+
+		const models = data.models
+			?.filter((m) => m.name?.includes("generateContent"))
+			.map((m) => {
+				const modelId = m.name?.replace("models/", "") ?? "";
+				return {
+					id: modelId,
+					name: m.displayName ?? modelId,
+					provider: "gemini" as const,
+					description: m.description,
+				};
+			});
+
+		if (models && models.length > 0) {
+			return models;
+		}
+	} catch (err) {
+		console.warn("Gemini list issue", err);
+	}
+
+	return GEMINI_DEFAULT_MODELS;
+}
+
+export async function listGrokModels(
+	apiKey?: string | null,
+): Promise<ModelInfo[]> {
+	if (!apiKey) {
+		return GROK_DEFAULT_MODELS;
+	}
+
+	try {
+		// Grok uses OpenAI-compatible API
+		const res = await fetchWithTimeout(`${GROK_URL}/models`, {
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				"Content-Type": "application/json",
+			},
+		});
+		if (!res.ok) {
+			console.warn(`Grok models API responded ${res.status}`);
+			return GROK_DEFAULT_MODELS;
+		}
+
+		const data = (await res.json()) as {
+			data?: {
+				id?: string;
+				created?: number;
+				owned_by?: string;
+			}[];
+		};
+
+		const models = data.data?.map((m) => ({
+			id: m.id as string,
+			name: m.id as string,
+			provider: "grok" as const,
+		}));
+
+		if (models && models.length > 0) {
+			return models;
+		}
+	} catch (err) {
+		console.warn("Grok list issue", err);
+	}
+
+	return GROK_DEFAULT_MODELS;
+}
+
+export async function listGroqModels(
+	apiKey?: string | null,
+): Promise<ModelInfo[]> {
+	if (!apiKey) {
+		return GROQ_DEFAULT_MODELS;
+	}
+
+	try {
+		const res = await fetchWithTimeout(`${GROQ_URL}/models`, {
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				"Content-Type": "application/json",
+			},
+		});
+		if (!res.ok) {
+			console.warn(`Groq models API responded ${res.status}`);
+			return GROQ_DEFAULT_MODELS;
+		}
+
+		const data = (await res.json()) as {
+			data?: {
+				id?: string;
+				object?: string;
+				created?: number;
+				owned_by?: string;
+			}[];
+		};
+
+		const models = data.data?.map((m) => ({
+			id: m.id as string,
+			name: m.id as string,
+			provider: "groq" as const,
+		}));
+
+		if (models && models.length > 0) {
+			return models;
+		}
+	} catch (err) {
+		console.warn("Groq list issue", err);
+	}
+
+	return GROQ_DEFAULT_MODELS;
 }
 
 export async function listOpenRouterModels(
@@ -238,12 +512,20 @@ export async function sendToModel(
 			return sendOllama(request, callbacks);
 		case "lmstudio":
 			return sendLmStudio(request, callbacks);
+		case "llamacpp":
+			return sendLlamaCpp(request, callbacks);
 		case "openrouter":
 			return sendOpenRouter(request, callbacks);
 		case "openai":
 			return sendOpenAI(request, callbacks);
 		case "anthropic":
 			return sendAnthropic(request, callbacks);
+		case "gemini":
+			return sendGemini(request, callbacks);
+		case "grok":
+			return sendGrok(request, callbacks);
+		case "groq":
+			return sendGroq(request, callbacks);
 		default:
 			throw new Error("Unsupported provider");
 	}
@@ -294,6 +576,35 @@ async function sendLmStudio(
 	});
 	if (!res.ok) {
 		throw new Error(`LM Studio error ${res.status}`);
+	}
+
+	if (req.stream) {
+		const { content, raw } = await readSseStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
+	const data = (await res.json()) as {
+		choices?: { message?: { content?: string } }[];
+	};
+	const content = data.choices?.[0]?.message?.content ?? "";
+	return { content, raw: data, requestId: req.requestId };
+}
+
+async function sendLlamaCpp(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
+	const res = await fetch(`${LLAMACPP_URL}/v1/chat/completions`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			model: req.model,
+			messages: req.messages,
+			stream: Boolean(req.stream),
+		}),
+	});
+	if (!res.ok) {
+		throw new Error(`llama.cpp error ${res.status}`);
 	}
 
 	if (req.stream) {
@@ -566,4 +877,198 @@ async function readAnthropicStream(
 	}
 
 	return { content: full, raw };
+}
+
+async function sendGemini(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
+	if (!req.apiKey) {
+		throw new Error("Gemini API key missing");
+	}
+
+	// Convert messages to Gemini format
+	const contents = req.messages
+		.filter((m) => m.role !== "system")
+		.map((m) => ({
+			role: m.role === "assistant" ? "model" : "user",
+			parts: [{ text: m.content }],
+		}));
+
+	// Extract system instruction if present
+	const systemInstruction = req.messages
+		.filter((m) => m.role === "system")
+		.map((m) => m.content)
+		.join("\n\n");
+
+	const endpoint = req.stream ? "streamGenerateContent" : "generateContent";
+	const url = `${GEMINI_URL}/models/${req.model}:${endpoint}?key=${req.apiKey}`;
+
+	const body: {
+		contents: { role: string; parts: { text: string }[] }[];
+		systemInstruction?: { parts: { text: string }[] };
+	} = {
+		contents,
+	};
+
+	if (systemInstruction) {
+		body.systemInstruction = {
+			parts: [{ text: systemInstruction }],
+		};
+	}
+
+	const res = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+
+	if (!res.ok) {
+		const errorText = await res.text();
+		throw new Error(`Gemini error ${res.status}: ${errorText}`);
+	}
+
+	if (req.stream) {
+		const { content, raw } = await readGeminiStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
+	const data = (await res.json()) as {
+		candidates?: {
+			content?: {
+				parts?: { text?: string }[];
+			};
+		}[];
+	};
+	const content = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+	return { content, raw: data, requestId: req.requestId };
+}
+
+async function readGeminiStream(
+	res: Response,
+	onDelta?: (delta: string) => void,
+): Promise<{ content: string; raw: unknown[] }> {
+	const reader = res.body?.getReader();
+	if (!reader) throw new Error("No streaming body available");
+
+	const decoder = new TextDecoder();
+	let buffer = "";
+	let full = "";
+	const raw: unknown[] = [];
+
+	for (;;) {
+		const { value, done } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+
+		// Gemini streams chunks as JSON objects separated by newlines
+		const lines = buffer.split(/\r?\n/);
+		buffer = lines.pop() ?? "";
+
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed === "[" || trimmed === "]" || trimmed === ",")
+				continue;
+
+			try {
+				const json = JSON.parse(trimmed) as {
+					candidates?: {
+						content?: {
+							parts?: { text?: string }[];
+						};
+					}[];
+				};
+				raw.push(json);
+				const delta = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+				if (delta) {
+					full += delta;
+					onDelta?.(delta);
+				}
+			} catch (err) {
+				console.warn("Gemini stream parse issue", err);
+			}
+		}
+	}
+
+	return { content: full, raw };
+}
+
+async function sendGrok(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
+	if (!req.apiKey) {
+		throw new Error("Grok API key missing");
+	}
+
+	// Grok uses OpenAI-compatible API
+	const res = await fetch(`${GROK_URL}/chat/completions`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${req.apiKey}`,
+		},
+		body: JSON.stringify({
+			model: req.model,
+			messages: req.messages,
+			stream: Boolean(req.stream),
+		}),
+	});
+
+	if (!res.ok) {
+		const errorText = await res.text();
+		throw new Error(`Grok error ${res.status}: ${errorText}`);
+	}
+
+	if (req.stream) {
+		const { content, raw } = await readSseStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
+	const data = (await res.json()) as {
+		choices?: { message?: { content?: string } }[];
+	};
+	const content = data.choices?.[0]?.message?.content ?? "";
+	return { content, raw: data, requestId: req.requestId };
+}
+
+async function sendGroq(
+	req: ChatModelRequest,
+	callbacks: StreamCallbacks,
+): Promise<ChatModelResponse> {
+	if (!req.apiKey) {
+		throw new Error("Groq API key missing");
+	}
+
+	// Groq uses OpenAI-compatible API
+	const res = await fetch(`${GROQ_URL}/chat/completions`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${req.apiKey}`,
+		},
+		body: JSON.stringify({
+			model: req.model,
+			messages: req.messages,
+			stream: Boolean(req.stream),
+		}),
+	});
+
+	if (!res.ok) {
+		const errorText = await res.text();
+		throw new Error(`Groq error ${res.status}: ${errorText}`);
+	}
+
+	if (req.stream) {
+		const { content, raw } = await readSseStream(res, callbacks.onDelta);
+		return { content, raw, requestId: req.requestId };
+	}
+
+	const data = (await res.json()) as {
+		choices?: { message?: { content?: string } }[];
+	};
+	const content = data.choices?.[0]?.message?.content ?? "";
+	return { content, raw: data, requestId: req.requestId };
 }

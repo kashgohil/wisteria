@@ -21,6 +21,10 @@ import {
 } from "./db";
 import {
 	listAnthropicModels,
+	listGeminiModels,
+	listGrokModels,
+	listGroqModels,
+	listLlamaCppModels,
 	listLmStudioModels,
 	listOllamaModels,
 	listOpenAIModels,
@@ -86,16 +90,38 @@ export function registerIpcHandlers() {
 	);
 
 	ipcMain.handle("models:list", async () => {
-		const [ollama, lmstudio, openai, anthropic, openrouter] = await Promise.all(
-			[
-				listOllamaModels(),
-				listLmStudioModels(),
-				listOpenAIModels(),
-				listAnthropicModels(),
-				listOpenRouterModels(readKey("openrouter_api_key")),
-			],
-		);
-		return [...ollama, ...lmstudio, ...openai, ...anthropic, ...openrouter];
+		const [
+			ollama,
+			lmstudio,
+			llamacpp,
+			openai,
+			anthropic,
+			gemini,
+			grok,
+			groq,
+			openrouter,
+		] = await Promise.all([
+			listOllamaModels(),
+			listLmStudioModels(),
+			listLlamaCppModels(),
+			listOpenAIModels(readKey("openai_api_key")),
+			listAnthropicModels(readKey("anthropic_api_key")),
+			listGeminiModels(readKey("gemini_api_key")),
+			listGrokModels(readKey("grok_api_key")),
+			listGroqModels(readKey("groq_api_key")),
+			listOpenRouterModels(readKey("openrouter_api_key")),
+		]);
+		return [
+			...ollama,
+			...lmstudio,
+			...llamacpp,
+			...openai,
+			...anthropic,
+			...gemini,
+			...grok,
+			...groq,
+			...openrouter,
+		];
 	});
 
 	ipcMain.handle(
