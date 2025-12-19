@@ -4,7 +4,7 @@ import type {
 	ChatModelResponse,
 	ModelInfo,
 } from "../shared/models";
-import type { Chat, Message, Project } from "./db";
+import type { Attachment, Chat, Message, Project } from "./db";
 
 export type ProjectUpdate = Partial<Pick<Project, "name" | "system_prompt">>;
 
@@ -97,6 +97,37 @@ const api = {
 			ipcRenderer.invoke("keys:list") as Promise<
 				{ key: string; value: string }[]
 			>,
+	},
+	attachments: {
+		upload: (
+			chatId: string,
+			messageId: string,
+			fileBuffer: ArrayBuffer,
+			fileName: string,
+			mimeType: string,
+		) =>
+			ipcRenderer.invoke(
+				"attachments:upload",
+				chatId,
+				messageId,
+				fileBuffer,
+				fileName,
+				mimeType,
+			) as Promise<Attachment>,
+		list: (filters?: { chatId?: string; type?: string }) =>
+			ipcRenderer.invoke("attachments:list", filters) as Promise<Attachment[]>,
+		getByMessage: (messageId: string) =>
+			ipcRenderer.invoke(
+				"attachments:getByMessage",
+				messageId,
+			) as Promise<Attachment[]>,
+		getPath: (attachmentId: string) =>
+			ipcRenderer.invoke(
+				"attachments:getPath",
+				attachmentId,
+			) as Promise<string>,
+		delete: (attachmentId: string) =>
+			ipcRenderer.invoke("attachments:delete", attachmentId) as Promise<boolean>,
 	},
 };
 

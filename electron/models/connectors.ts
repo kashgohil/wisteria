@@ -21,11 +21,13 @@ const OPENROUTER_FALLBACK_MODELS: ModelInfo[] = [
 		id: "openrouter/auto",
 		name: "OpenRouter Auto",
 		provider: "openrouter",
+		maker: "OpenRouter",
 	},
 	{
 		id: "anthropic/claude-3.5-sonnet",
 		name: "Claude 3.5 Sonnet (OpenRouter)",
 		provider: "openrouter",
+		maker: "Anthropic",
 	},
 ];
 
@@ -34,11 +36,15 @@ const OPENAI_DEFAULT_MODELS: ModelInfo[] = [
 		id: "gpt-4o",
 		name: "GPT-4o",
 		provider: "openai",
+		capabilities: { vision: true },
+		maker: "OpenAI",
 	},
 	{
 		id: "gpt-4o-mini",
 		name: "GPT-4o Mini",
 		provider: "openai",
+		capabilities: { vision: true },
+		maker: "OpenAI",
 	},
 ];
 
@@ -47,26 +53,36 @@ const ANTHROPIC_DEFAULT_MODELS: ModelInfo[] = [
 		id: "claude-sonnet-4-5-20250514",
 		name: "Claude Sonnet 4.5",
 		provider: "anthropic",
+		capabilities: { vision: true },
+		maker: "Anthropic",
 	},
 	{
 		id: "claude-opus-4-5-20251101",
 		name: "Claude Opus 4.5",
 		provider: "anthropic",
+		capabilities: { vision: true },
+		maker: "Anthropic",
 	},
 	{
 		id: "claude-3-5-sonnet-20241022",
 		name: "Claude 3.5 Sonnet",
 		provider: "anthropic",
+		capabilities: { vision: true },
+		maker: "Anthropic",
 	},
 	{
 		id: "claude-3-5-haiku-20241022",
 		name: "Claude 3.5 Haiku",
 		provider: "anthropic",
+		capabilities: { vision: true },
+		maker: "Anthropic",
 	},
 	{
 		id: "claude-3-opus-20240229",
 		name: "Claude 3 Opus",
 		provider: "anthropic",
+		capabilities: { vision: true },
+		maker: "Anthropic",
 	},
 ];
 
@@ -75,16 +91,22 @@ const GEMINI_DEFAULT_MODELS: ModelInfo[] = [
 		id: "gemini-2.0-flash-exp",
 		name: "Gemini 2.0 Flash (Experimental)",
 		provider: "gemini",
+		capabilities: { vision: true },
+		maker: "Google",
 	},
 	{
 		id: "gemini-1.5-pro",
 		name: "Gemini 1.5 Pro",
 		provider: "gemini",
+		capabilities: { vision: true },
+		maker: "Google",
 	},
 	{
 		id: "gemini-1.5-flash",
 		name: "Gemini 1.5 Flash",
 		provider: "gemini",
+		capabilities: { vision: true },
+		maker: "Google",
 	},
 ];
 
@@ -93,11 +115,14 @@ const GROK_DEFAULT_MODELS: ModelInfo[] = [
 		id: "grok-beta",
 		name: "Grok Beta",
 		provider: "grok",
+		maker: "xAI",
 	},
 	{
 		id: "grok-vision-beta",
 		name: "Grok Vision Beta",
 		provider: "grok",
+		capabilities: { vision: true },
+		maker: "xAI",
 	},
 ];
 
@@ -106,23 +131,75 @@ const GROQ_DEFAULT_MODELS: ModelInfo[] = [
 		id: "llama-3.3-70b-versatile",
 		name: "Llama 3.3 70B Versatile",
 		provider: "groq",
+		maker: "Meta",
 	},
 	{
 		id: "llama-3.1-8b-instant",
 		name: "Llama 3.1 8B Instant",
 		provider: "groq",
+		maker: "Meta",
 	},
 	{
 		id: "mixtral-8x7b-32768",
 		name: "Mixtral 8x7B",
 		provider: "groq",
+		maker: "Mistral",
 	},
 	{
 		id: "gemma2-9b-it",
 		name: "Gemma 2 9B",
 		provider: "groq",
+		maker: "Google",
 	},
 ];
+
+function inferMaker(modelId: string, provider?: string): string {
+	const lower = modelId.toLowerCase();
+
+	// OpenRouter specific prefix handling
+	if (provider === "openrouter" && modelId.includes("/")) {
+		const prefix = modelId.split("/")[0].toLowerCase();
+		const prefixMap: Record<string, string> = {
+			anthropic: "Anthropic",
+			google: "Google",
+			openai: "OpenAI",
+			meta: "Meta",
+			"meta-llama": "Meta",
+			mistral: "Mistral",
+			cohere: "Cohere",
+			microsoft: "Microsoft",
+			gryphe: "Gryphe",
+			"nous-research": "Nous Research",
+			"neversleep": "NeverSleep",
+			perplexity: "Perplexity",
+			deepseek: "DeepSeek",
+			qwen: "Alibaba",
+			"01-ai": "01.AI",
+			"cognitive-lab": "Cognitive Lab",
+			"liquid": "Liquid",
+			"nvidia": "Nvidia",
+			"x-ai": "xAI",
+		};
+		if (prefixMap[prefix]) return prefixMap[prefix];
+	}
+
+	if (lower.includes("gpt") || lower.includes("o1-")) return "OpenAI";
+	if (lower.includes("claude")) return "Anthropic";
+	if (lower.includes("gemini") || lower.includes("gemma")) return "Google";
+	if (lower.includes("llama")) return "Meta";
+	if (lower.includes("mistral") || lower.includes("mixtral")) return "Mistral";
+	if (lower.includes("qwen")) return "Alibaba";
+	if (lower.includes("phi")) return "Microsoft";
+	if (lower.includes("grok")) return "xAI";
+	if (lower.includes("deepseek")) return "DeepSeek";
+	if (lower.includes("command")) return "Cohere";
+	if (lower.includes("jamba")) return "AI21";
+	if (provider === "openai") return "OpenAI";
+	if (provider === "anthropic") return "Anthropic";
+	if (provider === "gemini") return "Google";
+	if (provider === "grok") return "xAI";
+	return "Other";
+}
 
 async function fetchWithTimeout(
 	url: string,
@@ -176,6 +253,7 @@ export async function listOllamaModels(): Promise<ModelInfo[]> {
 			id: m.name,
 			name: m.name,
 			provider: "ollama",
+			maker: inferMaker(m.name, "ollama"),
 		}));
 	} catch (err) {
 		logConnectionIssue("Ollama list", err);
@@ -192,6 +270,7 @@ export async function listLmStudioModels(): Promise<ModelInfo[]> {
 			id: m.id,
 			name: m.id,
 			provider: "lmstudio",
+			maker: inferMaker(m.id, "lmstudio"),
 		}));
 	} catch (err) {
 		logConnectionIssue("LM Studio list", err);
@@ -208,6 +287,7 @@ export async function listLlamaCppModels(): Promise<ModelInfo[]> {
 			id: m.id,
 			name: m.id,
 			provider: "llamacpp",
+			maker: inferMaker(m.id, "llamacpp"),
 		}));
 	} catch (err) {
 		logConnectionIssue("llama.cpp list", err);
@@ -249,6 +329,7 @@ export async function listOpenAIModels(
 				id: m.id as string,
 				name: m.id as string,
 				provider: "openai" as const,
+				maker: "OpenAI",
 			}));
 
 		if (models && models.length > 0) {
@@ -307,6 +388,7 @@ export async function listGeminiModels(
 					name: m.displayName ?? modelId,
 					provider: "gemini" as const,
 					description: m.description,
+					maker: "Google",
 				};
 			});
 
@@ -352,6 +434,7 @@ export async function listGrokModels(
 			id: m.id as string,
 			name: m.id as string,
 			provider: "grok" as const,
+			maker: "xAI",
 		}));
 
 		if (models && models.length > 0) {
@@ -396,6 +479,7 @@ export async function listGroqModels(
 			id: m.id as string,
 			name: m.id as string,
 			provider: "groq" as const,
+			maker: inferMaker(m.id as string, "groq"),
 		}));
 
 		if (models && models.length > 0) {
@@ -490,6 +574,7 @@ export async function listOpenRouterModels(
 					default_parameters: m.default_parameters,
 					supported_parameters: m.supported_parameters,
 					provider: "openrouter" as const,
+					maker: inferMaker(m.id as string, "openrouter"),
 				};
 			});
 		if (models && models.length) return models;

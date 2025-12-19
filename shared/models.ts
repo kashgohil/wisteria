@@ -2,9 +2,50 @@ import type { ProviderId } from "./providers";
 
 export type ModelProvider = ProviderId;
 
+// Multi-modal content support
+export type TextContentPart = {
+	type: "text";
+	text: string;
+};
+
+export type ImageContentPart = {
+	type: "image";
+	source: {
+		type: "base64";
+		media_type: string;
+		data: string;
+	};
+};
+
+export type AudioContentPart = {
+	type: "audio";
+	source: {
+		type: "base64";
+		media_type: string;
+		data: string;
+	};
+};
+
+export type VideoContentPart = {
+	type: "video";
+	source: {
+		type: "base64";
+		media_type: string;
+		data: string;
+	};
+};
+
+export type ContentPart =
+	| TextContentPart
+	| ImageContentPart
+	| AudioContentPart
+	| VideoContentPart;
+
+export type MessageContent = string | ContentPart[];
+
 export type ChatMessage = {
 	role: "system" | "user" | "assistant";
-	content: string;
+	content: MessageContent;
 };
 
 export type ModelPricing = {
@@ -14,6 +55,12 @@ export type ModelPricing = {
 	completion?: string | null;
 	image?: string | null;
 	web_search?: string | null;
+};
+
+export type ProviderCapabilities = {
+	vision?: boolean;
+	audio?: boolean;
+	video?: boolean;
 };
 
 export type ModelInfo = {
@@ -26,10 +73,12 @@ export type ModelInfo = {
 		input_modalities?: string[];
 		output_modalities?: string[];
 	};
+	capabilities?: ProviderCapabilities;
 	context_length?: number;
 	default_parameters?: Record<string, unknown>;
 	supported_parameters?: string[];
 	description?: string;
+	maker?: string;
 };
 
 export type ChatModelRequest = {

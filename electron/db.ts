@@ -26,6 +26,16 @@ export type Message = {
 	created_at: number;
 };
 
+export type Attachment = {
+	id: string;
+	message_id: string;
+	file_name: string;
+	mime_type: string;
+	file_path: string;
+	file_size: number;
+	created_at: number;
+};
+
 type KeyValue = {
 	key: string;
 	value: string;
@@ -147,6 +157,17 @@ function ensureDb() {
 			content TEXT NOT NULL,
 			created_at INTEGER NOT NULL
 		);
+		CREATE TABLE IF NOT EXISTS attachments (
+			id TEXT PRIMARY KEY,
+			message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+			file_name TEXT NOT NULL,
+			mime_type TEXT NOT NULL,
+			file_path TEXT NOT NULL,
+			file_size INTEGER NOT NULL,
+			created_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_attachments_message_id ON attachments(message_id);
+		CREATE INDEX IF NOT EXISTS idx_attachments_created_at ON attachments(created_at DESC);
 		CREATE TABLE IF NOT EXISTS kv (
 			key TEXT PRIMARY KEY,
 			value TEXT NOT NULL
@@ -321,6 +342,99 @@ export function deleteKey(key: string) {
 export function listKeys(): KeyValue[] {
 	const database = ensureDb();
 	return database.prepare("SELECT key, value FROM kv").all() as KeyValue[];
+}
+
+export function createAttachment(
+	messageId: string,
+	fileName: string,
+	mimeType: string,
+	filePath: string,
+	fileSize: number,
+): Attachment {
+	const database = ensureDb();
+	const attachment: Attachment = {
+		id: randomUUID(),
+		message_id: messageId,
+		file_name: fileName,
+		mime_type: mimeType,
+		file_path: filePath,
+		file_size: fileSize,
+		created_at: Date.now(),
+	};
+	database
+		.prepare(
+			"INSERT INTO attachments (id, message_id, file_name, mime_type, file_path, file_size, created_at) VALUES (@id, @message_id, @file_name, @mime_type, @file_path, @file_size, @created_at)",
+		)
+		.run(attachment);
+	return attachment;
+}
+
+export function listAttachmentsByMessage(messageId: string): Attachment[] {
+	const database = ensureDb();
+	return database
+		.prepare(
+			"SELECT * FROM attachments WHERE message_id = ? ORDER BY created_at ASC",
+		)
+		.all(messageId) as Attachment[];
+}
+
+export function listAllAttachments(filters?: {
+	chatId?: string;
+	type?: string;
+}): Attachment[] {
+	const database = ensureDb();
+
+	if (!filters?.chatId && !filters?.type) {
+		// No filters, return all attachments
+		return database
+			.prepare("SELECT * FROM attachments ORDER BY created_at DESC")
+			.all() as Attachment[];
+	}
+
+	if (filters.chatId && filters.type) {
+		// Filter by both chat and type
+		return database
+			.prepare(
+				`SELECT a.* FROM attachments a
+				JOIN messages m ON a.message_id = m.id
+				WHERE m.chat_id = ? AND a.mime_type LIKE ?
+				ORDER BY a.created_at DESC`,
+			)
+			.all(filters.chatId, `${filters.type}/%`) as Attachment[];
+	}
+
+	if (filters.chatId) {
+		// Filter by chat only
+		return database
+			.prepare(
+				`SELECT a.* FROM attachments a
+				JOIN messages m ON a.message_id = m.id
+				WHERE m.chat_id = ?
+				ORDER BY a.created_at DESC`,
+			)
+			.all(filters.chatId) as Attachment[];
+	}
+
+	// Filter by type only
+	return database
+		.prepare(
+			"SELECT * FROM attachments WHERE mime_type LIKE ? ORDER BY created_at DESC",
+		)
+		.all(`${filters.type}/%`) as Attachment[];
+}
+
+export function getAttachment(attachmentId: string): Attachment | null {
+	const database = ensureDb();
+	return (
+		(database
+			.prepare("SELECT * FROM attachments WHERE id = ?")
+			.get(attachmentId) as Attachment | undefined) ?? null
+	);
+}
+
+export function deleteAttachment(attachmentId: string) {
+	const database = ensureDb();
+	database.prepare("DELETE FROM attachments WHERE id = ?").run(attachmentId);
 }
 
 export function closeDb() {
