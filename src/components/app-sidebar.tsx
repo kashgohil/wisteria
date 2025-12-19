@@ -1,4 +1,5 @@
 import { ChatList } from "@/components/chat-list";
+import { MediaList } from "@/components/media-list";
 import { ProjectList } from "@/components/project-list";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ interface AppSidebarProps {
 	onCreateChat: () => Promise<void>;
 	onPersistSystemPrompt: () => Promise<void>;
 	onOpenSettings: () => void;
+	onViewAllMedia: () => void;
 
 	className?: string;
 }
@@ -51,6 +53,7 @@ export function AppSidebar({
 	onDeleteChat,
 	onCreateChat,
 	onOpenSettings,
+	onViewAllMedia,
 	className,
 }: AppSidebarProps) {
 	return (
@@ -77,6 +80,12 @@ export function AppSidebar({
 					onSelectChat={onSelectChat}
 					onDeleteChat={onDeleteChat}
 					onCreateChat={onCreateChat}
+				/>
+
+				<MediaList
+					selectedChatId={selectedChatId}
+					onSelectChat={onSelectChat}
+					onViewAll={onViewAllMedia}
 				/>
 			</div>
 			<div className="flex gap-2">
