@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
 	Select,
@@ -6,8 +7,19 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import {
+	ChevronDown,
+	Filter,
+	ImageIcon,
+	Mic,
+	Search,
+	Type,
+	Video,
+	X,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { ModelInfo } from "../../shared/models";
 
 type ModelSelectorProps = {
@@ -17,6 +29,9 @@ type ModelSelectorProps = {
 	disabled?: boolean;
 };
 
+const RECENT_MODELS_KEY = "wisteria-recent-models";
+const MAX_RECENT_MODELS = 8;
+
 export function ModelSelector({
 	models,
 	selectedModelId,
@@ -24,103 +39,332 @@ export function ModelSelector({
 	disabled = false,
 }: ModelSelectorProps) {
 	const [searchQuery, setSearchQuery] = useState("");
-
-	const textModels = useMemo(
-		() =>
-			models.filter((m) => {
-				if (!m.architecture) return true;
-				return (
-					m.architecture.input_modalities?.includes("text") &&
-					m.architecture.output_modalities?.includes("text")
-				);
-			}),
-		[models],
+	const [recentModelIds, setRecentModelIds] = useState<string[]>([]);
+	const [activeModalityFilters, setActiveModalityFilters] = useState<string[]>(
+		[],
 	);
+	const [activeMakerFilters, setActiveMakerFilters] = useState<string[]>([]);
+	const [showFilters, setShowFilters] = useState(false);
+
+	// Load recents from local storage on mount
+	useEffect(() => {
+		try {
+			const stored = localStorage.getItem(RECENT_MODELS_KEY);
+			if (stored) {
+				setRecentModelIds(JSON.parse(stored));
+			}
+		} catch (e) {
+			console.error("Failed to load recent models", e);
+		}
+	}, []);
+
+	const handleModelSelect = (value: string) => {
+		onValueChange(value);
+		// Update recents
+		const newRecents = [
+			value,
+			...recentModelIds.filter((id) => id !== value),
+		].slice(0, MAX_RECENT_MODELS);
+		setRecentModelIds(newRecents);
+		localStorage.setItem(RECENT_MODELS_KEY, JSON.stringify(newRecents));
+	};
+
+	const availableMakers = useMemo(() => {
+		const makers = new Set(models.map((m) => m.maker || "Other"));
+		return Array.from(makers).sort();
+	}, [models]);
+
+	const availableModalities = [
+		{ id: "text", icon: Type, label: "Text" },
+		{ id: "image", icon: ImageIcon, label: "Image" },
+		{ id: "audio", icon: Mic, label: "Audio" },
+		{ id: "video", icon: Video, label: "Video" },
+	];
 
 	const filteredModels = useMemo(() => {
-		if (!searchQuery.trim()) return textModels;
-		const query = searchQuery.toLowerCase();
-		return textModels.filter(
-			(m) =>
-				m.name.toLowerCase().includes(query) ||
-				m.id.toLowerCase().includes(query) ||
-				m.description?.toLowerCase().includes(query),
-		);
-	}, [textModels, searchQuery]);
+		let filtered = models;
 
-	const showSearch = textModels.length > 10;
+		// Search Filter
+		if (searchQuery.trim()) {
+			const query = searchQuery.toLowerCase();
+			filtered = filtered.filter(
+				(m) =>
+					m.name.toLowerCase().includes(query) ||
+					m.id.toLowerCase().includes(query) ||
+					m.description?.toLowerCase().includes(query),
+			);
+		}
+
+		// Modality Filter
+		if (activeModalityFilters.length > 0) {
+			filtered = filtered.filter((m) => {
+				return activeModalityFilters.some(
+					(mod) =>
+						m.architecture?.input_modalities?.includes(mod) ||
+						m.architecture?.output_modalities?.includes(mod),
+				);
+			});
+		}
+
+		// Maker Filter
+		if (activeMakerFilters.length > 0) {
+			filtered = filtered.filter((m) =>
+				activeMakerFilters.includes(m.maker || "Other"),
+			);
+		}
+
+		return filtered;
+	}, [models, searchQuery, activeModalityFilters, activeMakerFilters]);
+
+	const recentModels = useMemo(() => {
+		return recentModelIds
+			.map((id) => models.find((m) => m.id === id))
+			.filter((m): m is ModelInfo => !!m);
+	}, [recentModelIds, models]);
+
+	const toggleModalityFilter = (modality: string) => {
+		setActiveModalityFilters((prev) =>
+			prev.includes(modality)
+				? prev.filter((m) => m !== modality)
+				: [...prev, modality],
+		);
+	};
+
+	const toggleMakerFilter = (maker: string) => {
+		setActiveMakerFilters((prev) =>
+			prev.includes(maker) ? prev.filter((p) => p !== maker) : [...prev, maker],
+		);
+	};
+
+	const clearFilters = () => {
+		setActiveModalityFilters([]);
+		setActiveMakerFilters([]);
+		setSearchQuery("");
+	};
+
+	const getModalityIcons = (model: ModelInfo) => {
+		const icons = [];
+		if (
+			model.architecture?.input_modalities?.includes("text") ||
+			model.architecture?.output_modalities?.includes("text")
+		) {
+			icons.push(<Type key="text" className="size-3" />);
+		}
+		if (
+			model.architecture?.input_modalities?.includes("image") ||
+			model.capabilities?.vision
+		) {
+			icons.push(<ImageIcon key="image" className="size-3" />);
+		}
+		if (
+			model.architecture?.input_modalities?.includes("audio") ||
+			model.capabilities?.audio
+		) {
+			icons.push(<Mic key="audio" className="size-3" />);
+		}
+		if (
+			model.architecture?.input_modalities?.includes("video") ||
+			model.capabilities?.video
+		) {
+			icons.push(<Video key="video" className="size-3" />);
+		}
+		return icons;
+	};
+
+	const renderModelItem = (m: ModelInfo) => (
+		<SelectItem
+			key={m.id}
+			value={m.id}
+			className="flex flex-col items-start gap-1 p-3 pr-8 cursor-pointer rounded-md border border-transparent focus:bg-accent focus:text-accent-foreground data-[state=checked]:border-primary/50 data-[state=checked]:bg-primary/5"
+		>
+			<div className="w-full flex flex-col gap-0.5 overflow-hidden">
+				<span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider truncate">
+					{m.maker || m.provider}
+				</span>
+				<div className="flex items-center justify-between w-full gap-2">
+					<span className="font-medium truncate text-sm" title={m.name}>
+						{m.name}
+					</span>
+				</div>
+				<div className="flex flex-wrap gap-2 items-center mt-1.5 h-4">
+					<div className="flex items-center gap-1 text-muted-foreground">
+						{getModalityIcons(m)}
+					</div>
+					{(m.pricing?.prompt || m.pricing?.input) && (
+						<>
+							<Separator orientation="vertical" className="h-3" />
+							<span className="text-[10px] text-muted-foreground truncate">
+								${m.pricing?.prompt ?? m.pricing?.input}/1M
+							</span>
+						</>
+					)}
+				</div>
+			</div>
+		</SelectItem>
+	);
 
 	return (
 		<Select
 			value={selectedModelId || undefined}
-			onValueChange={onValueChange}
+			onValueChange={handleModelSelect}
 			disabled={disabled}
 		>
-			<SelectTrigger className="shrink-0 w-fit text-sm! px-2">
-				<SelectValue placeholder="Model…">
+			<SelectTrigger className="shrink-0 w-fit text-sm! px-2 min-w-[150px] max-w-[250px]">
+				<SelectValue placeholder="Select Model…">
 					{selectedModelId
-						? filteredModels.find((m) => m.id === selectedModelId)?.name
-						: "Model…"}
+						? models.find((m) => m.id === selectedModelId)?.name
+						: "Select Model…"}
 				</SelectValue>
 			</SelectTrigger>
-			<SelectContent className="h-[500px] w-[500px] flex flex-col">
-				{showSearch && (
-					<div className="sticky top-0 left-0 right-0 bg-popover p-2 z-1">
-						<div className="relative">
-							<Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-							<Input
-								placeholder="Search models…"
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								onClick={(e) => e.stopPropagation()}
-								onKeyDown={(e) => e.stopPropagation()}
-								className="pl-8 h-8 text-sm"
-								variant="filled"
-							/>
-						</div>
+			<SelectContent className="h-[600px] w-[600px] flex flex-col p-0 overflow-hidden">
+				<div className="flex flex-col gap-2 p-3 border-b bg-muted/30 sticky top-0 z-10">
+					<div className="relative">
+						<Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							placeholder="Search models…"
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							onClick={(e) => e.stopPropagation()}
+							onKeyDown={(e) => e.stopPropagation()}
+							className="pl-8 h-9 text-sm bg-background"
+						/>
 					</div>
-				)}
-				<div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 p-2">
-					{filteredModels.length === 0 ? (
-						<div className="px-2 py-6 text-center text-sm text-muted-foreground">
-							No models found
-						</div>
-					) : (
-						filteredModels.map((m) => (
-							<SelectItem
-								key={m.id}
-								value={m.id}
-								className="text-sm! p-2 border rounded-lg items-start"
+
+					<div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 px-2 text-xs"
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								setShowFilters(!showFilters);
+							}}
+						>
+							<Filter className="size-3 mr-1" />
+							Filters
+							<ChevronDown
+								className={cn(
+									"size-3 ml-1 transition-transform",
+									showFilters && "rotate-180",
+								)}
+							/>
+						</Button>
+
+						{/* Quick Modality Toggles */}
+						{availableModalities.map((modality) => (
+							<Button
+								key={modality.id}
+								variant={
+									activeModalityFilters.includes(modality.id)
+										? "secondary"
+										: "outline"
+								}
+								size="sm"
+								className={cn(
+									"h-7 px-2 text-xs capitalize",
+									activeModalityFilters.includes(modality.id) &&
+										"bg-primary/10 hover:bg-primary/20 border-primary/20",
+								)}
+								onClick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									toggleModalityFilter(modality.id);
+								}}
 							>
-								<div className="flex flex-col gap-1 items-start">
-									<span className="font-semibold">{m.name}</span>
-									{m.architecture?.input_modalities && (
-										<span className="text-xs text-muted-foreground">
-											Allowed Input:{" "}
-											{m.architecture?.input_modalities?.join(", ")}
-										</span>
-									)}
-									{m.architecture?.output_modalities && (
-										<span className="text-xs text-muted-foreground">
-											Allowed Output:{" "}
-											{m.architecture?.output_modalities?.join(", ")}
-										</span>
-									)}
-									{(m.pricing?.prompt || m.pricing?.input) && (
-										<span className="text-xs text-muted-foreground">
-											{m.pricing?.prompt ?? m.pricing?.input} $ per MToken input
-										</span>
-									)}
-									{(m.pricing?.completion || m.pricing?.output) && (
-										<span className="text-xs text-muted-foreground">
-											{m.pricing?.completion ?? m.pricing?.output} $ per MToken
-											output
-										</span>
-									)}
+								<modality.icon className="size-3 mr-1" />
+								{modality.label}
+							</Button>
+						))}
+
+						{(activeModalityFilters.length > 0 ||
+							activeMakerFilters.length > 0) && (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground ml-auto"
+								onClick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									clearFilters();
+								}}
+							>
+								<X className="size-3 mr-1" />
+								Clear
+							</Button>
+						)}
+					</div>
+
+					{showFilters && (
+						<div className="grid grid-cols-3 gap-4 pt-2 border-t">
+							<div className="col-span-3">
+								<span className="text-xs font-medium text-muted-foreground mb-2 block">
+									Providers
+								</span>
+								<div className="flex flex-wrap gap-1.5">
+									{availableMakers.map((maker) => (
+										<Button
+											key={maker}
+											variant={
+												activeMakerFilters.includes(maker)
+													? "secondary"
+													: "outline"
+											}
+											size="sm"
+											className={cn(
+												"h-6 px-2 text-[10px]",
+												activeMakerFilters.includes(maker) &&
+													"bg-primary/10 hover:bg-primary/20 border-primary/20",
+											)}
+											onClick={(e) => {
+												e.preventDefault();
+												e.stopPropagation();
+												toggleMakerFilter(maker);
+											}}
+										>
+											{maker}
+										</Button>
+									))}
 								</div>
-							</SelectItem>
-						))
+							</div>
+						</div>
 					)}
+				</div>
+
+				<div className="flex-1 overflow-y-auto">
+					{!searchQuery &&
+						activeModalityFilters.length === 0 &&
+						activeMakerFilters.length === 0 &&
+						recentModels.length > 0 && (
+							<div className="p-2">
+								<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+									Recently Used
+								</div>
+								<div className="grid grid-cols-2 gap-1">
+									{recentModels.map(renderModelItem)}
+								</div>
+								<Separator className="my-2" />
+							</div>
+						)}
+
+					<div className="p-2">
+						<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+							{searchQuery ||
+							activeModalityFilters.length > 0 ||
+							activeMakerFilters.length > 0
+								? "Search Results"
+								: "All Models"}
+						</div>
+						{filteredModels.length === 0 ? (
+							<div className="px-2 py-8 text-center text-sm text-muted-foreground">
+								No models found matching your criteria.
+							</div>
+						) : (
+							<div className="grid grid-cols-2 gap-1">
+								{filteredModels.map(renderModelItem)}
+							</div>
+						)}
+					</div>
 				</div>
 			</SelectContent>
 		</Select>
