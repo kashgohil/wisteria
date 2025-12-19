@@ -49,22 +49,10 @@ function formatDate(timestamp: number): string {
 }
 
 function MediaCard({ attachment }: { attachment: Attachment }) {
-	const [filePath, setFilePath] = useState<string | null>(null);
+	const filePath = `media://${attachment.file_path}`;
 	const mediaType = getMediaType(attachment.mime_type);
 
-	useEffect(() => {
-		window.wisteria.attachments
-			.getPath(attachment.id)
-			.then((path) => {
-				setFilePath(`file://${path}`);
-			})
-			.catch((err) => {
-				console.error("Failed to load media:", err);
-			});
-	}, [attachment.id]);
-
 	const handleDownload = () => {
-		if (!filePath) return;
 		const a = document.createElement("a");
 		a.href = filePath;
 		a.download = attachment.file_name;
@@ -75,21 +63,24 @@ function MediaCard({ attachment }: { attachment: Attachment }) {
 		<div className="group relative overflow-hidden rounded-lg border border-wisteria-border bg-wisteria-background/50 transition-shadow hover:shadow-lg">
 			{/* Media preview */}
 			<div className="aspect-square w-full overflow-hidden bg-wisteria-accent/5">
-				{mediaType === "image" && filePath ? (
+				{mediaType === "image" && (
 					<img
 						src={filePath}
 						alt={attachment.file_name}
 						className="h-full w-full object-cover transition-transform group-hover:scale-105"
 					/>
-				) : mediaType === "video" ? (
+				)}
+				{mediaType === "video" && (
 					<div className="flex h-full w-full items-center justify-center bg-wisteria-accent/10">
 						<VideoIcon className="h-16 w-16 text-wisteria-foreground/30" />
 					</div>
-				) : mediaType === "audio" ? (
+				)}
+				{mediaType === "audio" && (
 					<div className="flex h-full w-full items-center justify-center bg-wisteria-accent/10">
 						<MusicIcon className="h-16 w-16 text-wisteria-foreground/30" />
 					</div>
-				) : (
+				)}
+				{mediaType === "unknown" && (
 					<div className="flex h-full w-full items-center justify-center bg-wisteria-accent/10">
 						<ImageIcon className="h-16 w-16 text-wisteria-foreground/30" />
 					</div>

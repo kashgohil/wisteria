@@ -516,10 +516,8 @@ function App() {
           );
           if (attachment) {
             // Get the file path and read the file
-            const filePath =
-              await window.wisteria.attachments.getPath(attachmentId);
             // We'll use fetch to read the file as a blob
-            const response = await fetch(`file://${filePath}`);
+            const response = await fetch(`media://${attachment.file_path}`);
             const blob = await response.blob();
             const buffer = await blob.arrayBuffer();
             await window.wisteria.attachments.upload(
@@ -762,14 +760,9 @@ function App() {
                               <MessageAttachment
                                 key={attachment.id}
                                 attachment={attachment}
-                                onImageClick={async () => {
-                                  // Get the file path and show in lightbox
-                                  const path =
-                                    await window.wisteria.attachments.getPath(
-                                      attachment.id,
-                                    );
+                                onImageClick={() => {
                                   setLightboxImage({
-                                    src: `file://${path}`,
+                                    src: `media://${attachment.file_path}`,
                                     alt: attachment.file_name,
                                   });
                                 }}

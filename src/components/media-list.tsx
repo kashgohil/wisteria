@@ -50,21 +50,9 @@ function formatDate(timestamp: number): string {
 }
 
 function MediaThumbnail({ attachment }: { attachment: Attachment }) {
-	const [imagePath, setImagePath] = useState<string | null>(null);
 	const mediaType = getMediaType(attachment.mime_type);
-
-	useEffect(() => {
-		if (mediaType === "image") {
-			window.wisteria.attachments
-				.getPath(attachment.id)
-				.then((path) => {
-					setImagePath(`file://${path}`);
-				})
-				.catch((err) => {
-					console.error("Failed to load image:", err);
-				});
-		}
-	}, [attachment.id, mediaType]);
+	const imagePath =
+		mediaType === "image" ? `media://${attachment.file_path}` : null;
 
 	if (mediaType === "image" && imagePath) {
 		return (

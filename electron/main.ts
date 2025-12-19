@@ -1,8 +1,9 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, net, protocol } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeDb } from "./db";
 import { registerIpcHandlers } from "./ipc";
+import { getAttachmentsDir } from "./storage";
 
 // ESM shim so bundled CommonJS snippets (e.g. better-sqlite3) can access these
 export const __filename = fileURLToPath(import.meta.url);
@@ -77,6 +78,14 @@ app.on("activate", () => {
 	}
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+	protocol.handle("media", (request) => {
+		const relativePath = request.url.slice("media://".length);
+		const decodedPath = decodeURIComponent(relativePath);
+		const absolutePath = path.join(getAttachmentsDir(), decodedPath);
+		return net.fetch("file://" + absolutePath);
+	});
+	createWindow();
+});
 
 registerIpcHandlers();

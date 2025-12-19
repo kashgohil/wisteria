@@ -136,17 +136,8 @@ function ExistingMediaItem({
   selected: boolean;
   onToggle: () => void;
 }) {
-  const [filePath, setFilePath] = useState<string | null>(null);
   const mediaType = getMediaType(attachment.mime_type);
-
-  useEffect(() => {
-    if (mediaType === "image") {
-      window.wisteria.attachments
-        .getPath(attachment.id)
-        .then((path) => setFilePath(`file://${path}`))
-        .catch((err) => console.error("Failed to load image:", err));
-    }
-  }, [attachment.id, mediaType]);
+  const filePath = mediaType === "image" ? `media://${attachment.file_path}` : null;
 
   return (
     <button

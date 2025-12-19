@@ -1,5 +1,4 @@
 import { DownloadIcon, FileIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 
 type Attachment = {
 	id: string;
@@ -37,40 +36,16 @@ export function MessageAttachment({
 	attachment,
 	onImageClick,
 }: MessageAttachmentProps) {
-	const [filePath, setFilePath] = useState<string | null>(null);
 	const mediaType = getMediaType(attachment.mime_type);
-
-	useEffect(() => {
-		// Get the file path from the main process
-		window.wisteria.attachments
-			.getPath(attachment.id)
-			.then((path) => {
-				// Convert to file:// URL for Electron
-				setFilePath(`file://${path}`);
-			})
-			.catch((err) => {
-				console.error("Failed to get attachment path:", err);
-			});
-	}, [attachment.id]);
+	const filePath = `media://${attachment.file_path}`;
 
 	const handleDownload = () => {
-		if (!filePath) return;
-
 		// Create a temporary link to trigger download
 		const a = document.createElement("a");
 		a.href = filePath;
 		a.download = attachment.file_name;
 		a.click();
 	};
-
-	if (!filePath) {
-		return (
-			<div className="flex items-center gap-2 rounded-md border border-wisteria-border bg-wisteria-background/50 p-2">
-				<FileIcon className="h-4 w-4 text-wisteria-foreground/60" />
-				<div className="text-xs text-wisteria-foreground/60">Loading...</div>
-			</div>
-		);
-	}
 
 	return (
 		<div className="inline-block max-w-full">
