@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ImageIcon, MusicIcon, VideoIcon } from "lucide-react";
+import {
+	ArrowLeft,
+	ImageIcon,
+	MusicIcon,
+	Trash2,
+	VideoIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Attachment = {
@@ -48,15 +54,29 @@ function formatDate(timestamp: number): string {
 	return date.toLocaleDateString();
 }
 
-function MediaCard({ attachment }: { attachment: Attachment }) {
+function MediaCard({
+	attachment,
+	onDelete,
+}: {
+	attachment: Attachment;
+	onDelete: (id: string) => void;
+}) {
 	const filePath = `media://${attachment.file_path}`;
 	const mediaType = getMediaType(attachment.mime_type);
 
-	const handleDownload = () => {
+	const handleDownload = (e: React.MouseEvent) => {
+		e.stopPropagation();
 		const a = document.createElement("a");
 		a.href = filePath;
 		a.download = attachment.file_name;
 		a.click();
+	};
+
+	const handleDelete = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (window.confirm("Are you sure you want to delete this file?")) {
+			onDelete(attachment.id);
+		}
 	};
 
 	return (
@@ -87,13 +107,21 @@ function MediaCard({ attachment }: { attachment: Attachment }) {
 				)}
 
 				{/* Overlay on hover */}
-				<div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
+				<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
 					<button
 						type="button"
 						onClick={handleDownload}
 						className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-black transition-transform hover:scale-105"
 					>
 						Download
+					</button>
+					<button
+						type="button"
+						onClick={handleDelete}
+						className="flex items-center gap-2 rounded-full bg-red-500/90 px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-105 hover:bg-red-600"
+					>
+						<Trash2 className="h-4 w-4" />
+						Delete
 					</button>
 				</div>
 			</div>
@@ -131,6 +159,16 @@ export function MediaView({ onClose }: MediaViewProps) {
 			console.error("Failed to load attachments:", err);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleDelete = async (id: string) => {
+		try {
+			await window.wisteria.attachments.delete(id);
+			setAttachments((prev) => prev.filter((a) => a.id !== id));
+		} catch (err) {
+			console.error("Failed to delete attachment:", err);
+			alert("Failed to delete attachment. Please try again.");
 		}
 	};
 
@@ -251,7 +289,11 @@ export function MediaView({ onClose }: MediaViewProps) {
 				) : (
 					<div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 						{filteredAttachments.map((attachment) => (
-							<MediaCard key={attachment.id} attachment={attachment} />
+							<MediaCard
+								key={attachment.id}
+								attachment={attachment}
+								onDelete={handleDelete}
+							/>
 						))}
 					</div>
 				)}

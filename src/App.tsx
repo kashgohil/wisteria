@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import type { ModelInfo } from "../shared/models";
+import type { ContentPart, ModelInfo } from "../shared/models";
 import type { ProviderId } from "../shared/providers";
 import "./index.css";
 import { cn } from "./lib/utils";
@@ -63,6 +63,18 @@ function generateChatName(message: string): string {
   }
 
   return name || "New Chat";
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = (reader.result as string).split(",")[1];
+      resolve(base64String);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function App() {
@@ -480,6 +492,10 @@ function App() {
     setAttachments([]);
     setExistingAttachmentIds([]);
 
+    const currentContentParts: ContentPart[] = [
+      { type: "text", text: userMessage.content },
+    ];
+
     // Upload new attachments if any
     if (filesToUpload.length > 0) {
       try {
@@ -493,6 +509,18 @@ function App() {
             file.name,
             file.type,
           );
+
+          if (file.type.startsWith("image/")) {
+            const base64 = await blobToBase64(file);
+            currentContentParts.push({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: file.type,
+                data: base64,
+              },
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to upload attachments:", err);
@@ -506,8 +534,6 @@ function App() {
     if (existingToReuse.length > 0) {
       try {
         setStatus("Copying media…");
-        // We'll need to implement a copy function or just upload them again
-        // For now, we'll fetch the files and re-upload them
         for (const attachmentId of existingToReuse) {
           // Get the attachment details
           const existingAttachments = await window.wisteria.attachments.list();
@@ -516,7 +542,6 @@ function App() {
           );
           if (attachment) {
             // Get the file path and read the file
-            // We'll use fetch to read the file as a blob
             const response = await fetch(`media://${attachment.file_path}`);
             const blob = await response.blob();
             const buffer = await blob.arrayBuffer();
@@ -527,6 +552,18 @@ function App() {
               attachment.file_name,
               attachment.mime_type,
             );
+
+            if (attachment.mime_type.startsWith("image/")) {
+              const base64 = await blobToBase64(blob);
+              currentContentParts.push({
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: attachment.mime_type,
+                  data: base64,
+                },
+              });
+            }
           }
         }
       } catch (err) {
@@ -535,12 +572,47 @@ function App() {
       }
     }
 
+    // Construct history with attachments
+    const historyPromises = messages.map(async (m) => {
+      const msgAttachments = messageAttachments[m.id];
+      if (!msgAttachments || msgAttachments.length === 0) {
+        return { role: m.role, content: m.content };
+      }
+
+      const contentParts: ContentPart[] = [
+        { type: "text", text: m.content || "" },
+      ];
+
+      for (const att of msgAttachments) {
+        if (att.mime_type.startsWith("image/")) {
+          try {
+            const response = await fetch(`media://${att.file_path}`);
+            const blob = await response.blob();
+            const base64 = await blobToBase64(blob);
+            contentParts.push({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: att.mime_type,
+                data: base64,
+              },
+            });
+          } catch (e) {
+            console.error("Failed to load attachment for history", e);
+          }
+        }
+      }
+      return { role: m.role, content: contentParts };
+    });
+
+    const previousMessages = await Promise.all(historyPromises);
+
     const history = [
       ...(activeProject?.system_prompt
         ? [{ role: "system" as const, content: activeProject.system_prompt }]
         : []),
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user" as const, content: userMessage.content },
+      ...previousMessages,
+      { role: "user" as const, content: currentContentParts },
     ];
 
     const requestId = crypto.randomUUID();

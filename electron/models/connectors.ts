@@ -1,8 +1,12 @@
 import type {
 	ChatModelRequest,
 	ChatModelResponse,
+	ContentPart,
+	ImageContentPart,
+	MessageContent,
 	ModelInfo,
 	ModelPricing,
+	TextContentPart,
 } from "../../shared/models";
 
 const OLLAMA_URL = "http://localhost:11434";
@@ -243,6 +247,84 @@ function logConnectionIssue(label: string, err: unknown) {
 	// Reduce noise while still surfacing unexpected errors
 	console.warn(`${label} request issue`);
 }
+
+// --- Multi-modal helpers ---
+
+function extractText(content: MessageContent): string {
+	if (typeof content === "string") return content;
+	return content
+		.filter((part) => part.type === "text")
+		.map((part) => (part as TextContentPart).text)
+		.join("\n");
+}
+
+function extractImages(content: MessageContent): string[] {
+	if (typeof content === "string") return [];
+	return content
+		.filter((part) => part.type === "image")
+		.map((part) => (part as ImageContentPart).source.data);
+}
+
+function convertOpenAIContent(content: MessageContent): unknown {
+	if (typeof content === "string") return content;
+	return content.map((part) => {
+		if (part.type === "text") {
+			return { type: "text", text: part.text };
+		}
+		if (part.type === "image") {
+			return {
+				type: "image_url",
+				image_url: {
+					url: `data:${part.source.media_type};base64,${part.source.data}`,
+				},
+			};
+		}
+		return null;
+	}).filter(Boolean);
+}
+
+function convertAnthropicContent(content: MessageContent): unknown[] {
+	if (typeof content === "string") return [{ type: "text", text: content }];
+	return content.map((part) => {
+		if (part.type === "text") {
+			return { type: "text", text: part.text };
+		}
+		if (part.type === "image") {
+			return {
+				type: "image",
+				source: {
+					type: "base64",
+					media_type: part.source.media_type,
+					data: part.source.data,
+				},
+			};
+		}
+		return null;
+	}).filter(Boolean) as unknown[];
+}
+
+function convertGeminiContent(content: MessageContent): unknown[] {
+	const parts: unknown[] = [];
+	if (typeof content === "string") {
+		parts.push({ text: content });
+	} else {
+		for (const part of content) {
+			if (part.type === "text") {
+				parts.push({ text: part.text });
+			} else if (part.type === "image") {
+				parts.push({
+					inlineData: {
+						mimeType: part.source.media_type,
+						data: part.source.data,
+					},
+				});
+			}
+		}
+	}
+	return parts;
+}
+
+// --- End helpers ---
 
 export async function listOllamaModels(): Promise<ModelInfo[]> {
 	try {
@@ -592,27 +674,38 @@ export async function sendToModel(
 	request: ChatModelRequest,
 	callbacks: StreamCallbacks = {},
 ): Promise<ChatModelResponse> {
-	switch (request.provider) {
-		case "ollama":
-			return sendOllama(request, callbacks);
-		case "lmstudio":
-			return sendLmStudio(request, callbacks);
-		case "llamacpp":
-			return sendLlamaCpp(request, callbacks);
-		case "openrouter":
-			return sendOpenRouter(request, callbacks);
-		case "openai":
-			return sendOpenAI(request, callbacks);
-		case "anthropic":
-			return sendAnthropic(request, callbacks);
-		case "gemini":
-			return sendGemini(request, callbacks);
-		case "grok":
-			return sendGrok(request, callbacks);
-		case "groq":
-			return sendGroq(request, callbacks);
-		default:
-			throw new Error("Unsupported provider");
+	console.log(`Sending to model: ${request.provider}/${request.model}`, {
+		messageCount: request.messages.length,
+		lastMessageContent: request.messages[request.messages.length - 1]?.content,
+		stream: request.stream
+	});
+
+	try {
+		switch (request.provider) {
+			case "ollama":
+				return await sendOllama(request, callbacks);
+			case "lmstudio":
+				return await sendLmStudio(request, callbacks);
+			case "llamacpp":
+				return await sendLlamaCpp(request, callbacks);
+			case "openrouter":
+				return await sendOpenRouter(request, callbacks);
+			case "openai":
+				return await sendOpenAI(request, callbacks);
+			case "anthropic":
+				return await sendAnthropic(request, callbacks);
+			case "gemini":
+				return await sendGemini(request, callbacks);
+			case "grok":
+				return await sendGrok(request, callbacks);
+			case "groq":
+				return await sendGroq(request, callbacks);
+			default:
+				throw new Error("Unsupported provider");
+		}
+	} catch (err) {
+		console.error("Error in sendToModel:", err);
+		throw err;
 	}
 }
 
@@ -620,16 +713,26 @@ async function sendOllama(
 	req: ChatModelRequest,
 	callbacks: StreamCallbacks,
 ): Promise<ChatModelResponse> {
+	const messages = req.messages.map(m => ({
+		role: m.role,
+		content: extractText(m.content),
+		images: extractImages(m.content).length > 0 ? extractImages(m.content) : undefined
+	}));
+
+	console.log("Ollama request messages:", JSON.stringify(messages, null, 2));
+
 	const res = await fetch(`${OLLAMA_URL}/api/chat`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			model: req.model,
-			messages: req.messages,
+			messages: messages,
 			stream: Boolean(req.stream),
 		}),
 	});
 	if (!res.ok) {
+		const text = await res.text();
+		console.error(`Ollama error ${res.status}:`, text);
 		throw new Error(`Ollama error ${res.status}`);
 	}
 
@@ -639,6 +742,7 @@ async function sendOllama(
 	}
 
 	const data = (await res.json()) as { message?: { content?: string } };
+	console.log("Ollama response data:", data);
 	return {
 		content: data.message?.content ?? "",
 		raw: data,
@@ -650,12 +754,18 @@ async function sendLmStudio(
 	req: ChatModelRequest,
 	callbacks: StreamCallbacks,
 ): Promise<ChatModelResponse> {
+	// LM Studio uses OpenAI-compatible API
+	const messages = req.messages.map(m => ({
+		role: m.role,
+		content: convertOpenAIContent(m.content)
+	}));
+
 	const res = await fetch(`${LMSTUDIO_URL}/v1/chat/completions`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			model: req.model,
-			messages: req.messages,
+			messages,
 			stream: Boolean(req.stream),
 		}),
 	});
@@ -679,12 +789,18 @@ async function sendLlamaCpp(
 	req: ChatModelRequest,
 	callbacks: StreamCallbacks,
 ): Promise<ChatModelResponse> {
+	// Llama.cpp uses OpenAI-compatible API
+	const messages = req.messages.map(m => ({
+		role: m.role,
+		content: convertOpenAIContent(m.content)
+	}));
+
 	const res = await fetch(`${LLAMACPP_URL}/v1/chat/completions`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			model: req.model,
-			messages: req.messages,
+			messages,
 			stream: Boolean(req.stream),
 		}),
 	});
@@ -711,6 +827,14 @@ async function sendOpenRouter(
 	if (!req.apiKey) {
 		throw new Error("OpenRouter API key missing");
 	}
+	
+	const messages = req.messages.map(m => ({
+		role: m.role,
+		content: convertOpenAIContent(m.content)
+	}));
+
+	console.log("OpenRouter request messages:", JSON.stringify(messages, null, 2));
+
 	const res = await fetch(`${OPENROUTER_URL}/chat/completions`, {
 		method: "POST",
 		headers: {
@@ -719,11 +843,13 @@ async function sendOpenRouter(
 		},
 		body: JSON.stringify({
 			model: req.model,
-			messages: req.messages,
+			messages,
 			stream: Boolean(req.stream),
 		}),
 	});
 	if (!res.ok) {
+		const text = await res.text();
+		console.error(`OpenRouter error ${res.status}:`, text);
 		throw new Error(`OpenRouter error ${res.status}`);
 	}
 
@@ -735,6 +861,7 @@ async function sendOpenRouter(
 	const data = (await res.json()) as {
 		choices?: { message?: { content?: string } }[];
 	};
+	console.log("OpenRouter response data:", data);
 	const content = data.choices?.[0]?.message?.content ?? "";
 	return { content, raw: data, requestId: req.requestId };
 }
@@ -747,6 +874,11 @@ async function sendOpenAI(
 		throw new Error("OpenAI API key missing");
 	}
 
+	const messages = req.messages.map(m => ({
+		role: m.role,
+		content: convertOpenAIContent(m.content)
+	}));
+
 	const res = await fetch(`${OPENAI_URL}/chat/completions`, {
 		method: "POST",
 		headers: {
@@ -755,7 +887,7 @@ async function sendOpenAI(
 		},
 		body: JSON.stringify({
 			model: req.model,
-			messages: req.messages,
+			messages,
 			stream: Boolean(req.stream),
 		}),
 	});
@@ -786,13 +918,14 @@ async function sendAnthropic(
 
 	const system = req.messages
 		.filter((m) => m.role === "system")
-		.map((m) => m.content)
+		.map((m) => extractText(m.content))
 		.join("\n\n");
+
 	const messages = req.messages
 		.filter((m) => m.role !== "system")
 		.map((m) => ({
 			role: m.role === "assistant" ? "assistant" : ("user" as const),
-			content: m.content,
+			content: convertAnthropicContent(m.content),
 		}));
 
 	const res = await fetch(`${ANTHROPIC_URL}/messages`, {
@@ -884,7 +1017,8 @@ async function readSseStream(
 	for (;;) {
 		const { value, done } = await reader.read();
 		if (done) break;
-		buffer += decoder.decode(value, { stream: true });
+		const chunk = decoder.decode(value, { stream: true });
+		buffer += chunk;
 
 		const lines = buffer.split(/\r?\n/);
 		buffer = lines.pop() ?? "";
@@ -905,11 +1039,12 @@ async function readSseStream(
 					onDelta?.(delta);
 				}
 			} catch (err) {
-				console.warn("SSE stream parse issue", err);
+				console.warn("SSE stream parse issue", err, "Payload:", payload);
 			}
 		}
 	}
-
+	
+	console.log("SSE Stream finished. Full content length:", full.length);
 	return { content: full, raw };
 }
 
@@ -977,20 +1112,20 @@ async function sendGemini(
 		.filter((m) => m.role !== "system")
 		.map((m) => ({
 			role: m.role === "assistant" ? "model" : "user",
-			parts: [{ text: m.content }],
+			parts: convertGeminiContent(m.content),
 		}));
 
 	// Extract system instruction if present
 	const systemInstruction = req.messages
 		.filter((m) => m.role === "system")
-		.map((m) => m.content)
+		.map((m) => extractText(m.content))
 		.join("\n\n");
 
 	const endpoint = req.stream ? "streamGenerateContent" : "generateContent";
 	const url = `${GEMINI_URL}/models/${req.model}:${endpoint}?key=${req.apiKey}`;
 
 	const body: {
-		contents: { role: string; parts: { text: string }[] }[];
+		contents: { role: string; parts: unknown[] }[];
 		systemInstruction?: { parts: { text: string }[] };
 	} = {
 		contents,
@@ -1088,6 +1223,11 @@ async function sendGrok(
 		throw new Error("Grok API key missing");
 	}
 
+	const messages = req.messages.map(m => ({
+		role: m.role,
+		content: convertOpenAIContent(m.content)
+	}));
+
 	// Grok uses OpenAI-compatible API
 	const res = await fetch(`${GROK_URL}/chat/completions`, {
 		method: "POST",
@@ -1097,7 +1237,7 @@ async function sendGrok(
 		},
 		body: JSON.stringify({
 			model: req.model,
-			messages: req.messages,
+			messages,
 			stream: Boolean(req.stream),
 		}),
 	});
@@ -1127,6 +1267,11 @@ async function sendGroq(
 		throw new Error("Groq API key missing");
 	}
 
+	const messages = req.messages.map(m => ({
+		role: m.role,
+		content: convertOpenAIContent(m.content)
+	}));
+
 	// Groq uses OpenAI-compatible API
 	const res = await fetch(`${GROQ_URL}/chat/completions`, {
 		method: "POST",
@@ -1136,7 +1281,7 @@ async function sendGroq(
 		},
 		body: JSON.stringify({
 			model: req.model,
-			messages: req.messages,
+			messages,
 			stream: Boolean(req.stream),
 		}),
 	});
