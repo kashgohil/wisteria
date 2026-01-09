@@ -313,8 +313,8 @@ function convertGeminiContent(content: MessageContent): unknown[] {
 				parts.push({ text: part.text });
 			} else if (part.type === "image") {
 				parts.push({
-					inlineData: {
-						mimeType: part.source.media_type,
+					inline_data: {
+						mime_type: part.source.media_type,
 						data: part.source.data,
 					},
 				});
@@ -972,31 +972,42 @@ async function readNdjsonStream(
 	let full = "";
 	const raw: unknown[] = [];
 
-	for (;;) {
-		const { value, done } = await reader.read();
-		if (done) break;
-		buffer += decoder.decode(value, { stream: true });
+	try {
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
 
-		const lines = buffer.split("\n");
-		buffer = lines.pop() ?? "";
+			const lines = buffer.split("\n");
+			buffer = lines.pop() ?? "";
 
-		for (const line of lines) {
-			const trimmed = line.trim();
-			if (!trimmed) continue;
-			try {
-				const json = JSON.parse(trimmed) as {
-					message?: { content?: string };
-				};
-				raw.push(json);
-				const delta = json.message?.content ?? "";
-				if (delta) {
-					full += delta;
-					onDelta?.(delta);
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed) continue;
+				try {
+					const json = JSON.parse(trimmed) as {
+						message?: { content?: string };
+						error?: string;
+					};
+					raw.push(json);
+
+					if (json.error) {
+						throw new Error(`Ollama stream error: ${json.error}`);
+					}
+
+					const delta = json.message?.content ?? "";
+					if (delta) {
+						full += delta;
+						onDelta?.(delta);
+					}
+				} catch (err) {
+					if ((err as Error).message.includes("Ollama stream error")) throw err;
+					console.warn("Ollama stream parse issue", err);
 				}
-			} catch (err) {
-				console.warn("Ollama stream parse issue", err);
 			}
 		}
+	} finally {
+		reader.releaseLock();
 	}
 
 	return { content: full, raw };
@@ -1014,34 +1025,52 @@ async function readSseStream(
 	let full = "";
 	const raw: unknown[] = [];
 
-	for (;;) {
-		const { value, done } = await reader.read();
-		if (done) break;
-		const chunk = decoder.decode(value, { stream: true });
-		buffer += chunk;
+	try {
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			const chunk = decoder.decode(value, { stream: true });
+			buffer += chunk;
 
-		const lines = buffer.split(/\r?\n/);
-		buffer = lines.pop() ?? "";
+			const lines = buffer.split(/\r?\n/);
+			buffer = lines.pop() ?? "";
 
-		for (const line of lines) {
-			const trimmed = line.trim();
-			if (!trimmed.startsWith("data:")) continue;
-			const payload = trimmed.slice(5).trim();
-			if (!payload || payload === "[DONE]") continue;
-			try {
-				const json = JSON.parse(payload) as {
-					choices?: { delta?: { content?: string } }[];
-				};
-				raw.push(json);
-				const delta = json.choices?.[0]?.delta?.content ?? "";
-				if (delta) {
-					full += delta;
-					onDelta?.(delta);
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed.startsWith("data:")) continue;
+				const payload = trimmed.slice(5).trim();
+				if (!payload || payload === "[DONE]") continue;
+				try {
+					const json = JSON.parse(payload) as {
+						choices?: { delta?: { content?: string } }[];
+						error?: { message?: string };
+					};
+					raw.push(json);
+
+					if (json.error) {
+						throw new Error(json.error.message || "Unknown stream error");
+					}
+
+					const delta = json.choices?.[0]?.delta?.content ?? "";
+					if (delta) {
+						full += delta;
+						onDelta?.(delta);
+					}
+				} catch (err) {
+					// Re-throw if it's an API error we just detected
+					if ((err as Error).message !== "Unexpected end of JSON input" && !(err instanceof SyntaxError)) {
+						// Check if it looks like one of our errors
+						const msg = (err as { message?: string }).message;
+						if (msg && !msg.startsWith("JSON")) {
+							throw err;
+						}
+					}
+					console.warn("SSE stream parse issue", err, "Payload:", payload);
 				}
-			} catch (err) {
-				console.warn("SSE stream parse issue", err, "Payload:", payload);
 			}
 		}
+	} finally {
+		reader.releaseLock();
 	}
 	
 	console.log("SSE Stream finished. Full content length:", full.length);
@@ -1060,40 +1089,54 @@ async function readAnthropicStream(
 	let full = "";
 	const raw: unknown[] = [];
 
-	for (;;) {
-		const { value, done } = await reader.read();
-		if (done) break;
-		buffer += decoder.decode(value, { stream: true });
+	try {
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
 
-		const lines = buffer.split(/\r?\n/);
-		buffer = lines.pop() ?? "";
+			const lines = buffer.split(/\r?\n/);
+			buffer = lines.pop() ?? "";
 
-		for (const line of lines) {
-			const trimmed = line.trim();
-			if (!trimmed.startsWith("data:")) continue;
-			const payload = trimmed.slice(5).trim();
-			if (!payload || payload === "[DONE]") continue;
-			try {
-				const json = JSON.parse(payload) as {
-					type?: string;
-					delta?: { text?: string };
-					content_block?: { text?: string };
-				};
-				raw.push(json);
-				const delta =
-					json.type === "content_block_delta"
-						? json.delta?.text ?? ""
-						: json.type === "content_block_start"
-						? json.content_block?.text ?? ""
-						: "";
-				if (delta) {
-					full += delta;
-					onDelta?.(delta);
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed.startsWith("data:")) continue;
+				const payload = trimmed.slice(5).trim();
+				if (!payload || payload === "[DONE]") continue;
+				try {
+					const json = JSON.parse(payload) as {
+						type?: string;
+						delta?: { text?: string };
+						content_block?: { text?: string };
+						error?: { type: string; message: string };
+					};
+					raw.push(json);
+
+					if (json.type === "error" && json.error) {
+						throw new Error(json.error.message || "Anthropic stream error");
+					}
+
+					const delta =
+						json.type === "content_block_delta"
+							? json.delta?.text ?? ""
+							: json.type === "content_block_start"
+							? json.content_block?.text ?? ""
+							: "";
+					if (delta) {
+						full += delta;
+						onDelta?.(delta);
+					}
+				} catch (err) {
+					const msg = (err as { message?: string }).message;
+					if (msg && !msg.startsWith("JSON") && !(err instanceof SyntaxError)) {
+						throw err;
+					}
+					console.warn("Anthropic stream parse issue", err);
 				}
-			} catch (err) {
-				console.warn("Anthropic stream parse issue", err);
 			}
 		}
+	} finally {
+		reader.releaseLock();
 	}
 
 	return { content: full, raw };
@@ -1178,38 +1221,52 @@ async function readGeminiStream(
 	let full = "";
 	const raw: unknown[] = [];
 
-	for (;;) {
-		const { value, done } = await reader.read();
-		if (done) break;
-		buffer += decoder.decode(value, { stream: true });
+	try {
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
 
-		// Gemini streams chunks as JSON objects separated by newlines
-		const lines = buffer.split(/\r?\n/);
-		buffer = lines.pop() ?? "";
+			// Gemini streams chunks as JSON objects separated by newlines
+			const lines = buffer.split(/\r?\n/);
+			buffer = lines.pop() ?? "";
 
-		for (const line of lines) {
-			const trimmed = line.trim();
-			if (!trimmed || trimmed === "[" || trimmed === "]" || trimmed === ",")
-				continue;
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed || trimmed === "[" || trimmed === "]" || trimmed === ",")
+					continue;
 
-			try {
-				const json = JSON.parse(trimmed) as {
-					candidates?: {
-						content?: {
-							parts?: { text?: string }[];
-						};
-					}[];
-				};
-				raw.push(json);
-				const delta = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-				if (delta) {
-					full += delta;
-					onDelta?.(delta);
+				try {
+					const json = JSON.parse(trimmed) as {
+						candidates?: {
+							content?: {
+								parts?: { text?: string }[];
+							};
+						}[];
+						error?: { message?: string };
+					};
+					raw.push(json);
+
+					if (json.error) {
+						throw new Error(json.error.message || "Gemini stream error");
+					}
+
+					const delta = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+					if (delta) {
+						full += delta;
+						onDelta?.(delta);
+					}
+				} catch (err) {
+					const msg = (err as { message?: string }).message;
+					if (msg && !msg.startsWith("JSON") && !(err instanceof SyntaxError)) {
+						throw err;
+					}
+					console.warn("Gemini stream parse issue", err);
 				}
-			} catch (err) {
-				console.warn("Gemini stream parse issue", err);
 			}
 		}
+	} finally {
+		reader.releaseLock();
 	}
 
 	return { content: full, raw };
