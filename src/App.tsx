@@ -4,7 +4,6 @@ import { MediaUploadDialog } from "@/components/media-upload-dialog";
 import { MediaView } from "@/components/media-view";
 import { MessageAttachment } from "@/components/message-attachment";
 import { ModelSelector } from "@/components/model-selector";
-import { ProviderSelector } from "@/components/provider-selector";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -131,6 +130,7 @@ function App() {
   useEffect(() => {
     void bootstrap();
     setTimeout(() => setLoading(false), 4000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -172,7 +172,6 @@ function App() {
       offDone();
       offError();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeProject = useMemo(
@@ -186,11 +185,6 @@ function App() {
         a.localeCompare(b),
       ),
     [models],
-  );
-
-  const filteredModels = useMemo(
-    () => models.filter((m) => m.provider === selectedProvider),
-    [models, selectedProvider],
   );
 
   const bootstrap = async () => {
@@ -447,13 +441,12 @@ function App() {
     await updateProjectMeta({ system_prompt: systemPrompt });
   };
 
-  const handleProviderChange = (value: ProviderId) => {
-    setSelectedProvider(value);
-    setSelectedModelId(""); // Reset model when provider changes
-  };
-
   const handleModelChange = (value: string) => {
     setSelectedModelId(value);
+    const model = models.find((m) => m.id === value);
+    if (model) {
+      setSelectedProvider(model.provider);
+    }
   };
 
   const sendMessage = async () => {
@@ -880,16 +873,10 @@ function App() {
                           </span>
                         )}
                       </Button>
-                      <ProviderSelector
-                        providers={uniqueProviders}
-                        selectedProvider={selectedProvider}
-                        onValueChange={handleProviderChange}
-                      />
                       <ModelSelector
-                        models={filteredModels}
+                        models={models}
                         selectedModelId={selectedModelId}
                         onValueChange={handleModelChange}
-                        disabled={!selectedProvider}
                       />
                     </div>
 

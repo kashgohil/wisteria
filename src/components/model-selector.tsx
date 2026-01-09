@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ModelInfo } from "../../shared/models";
+import { PROVIDER_NAMES, type ProviderId } from "../../shared/providers";
 
 type ModelSelectorProps = {
 	models: ModelInfo[];
@@ -43,6 +44,9 @@ export function ModelSelector({
 	const [activeModalityFilters, setActiveModalityFilters] = useState<string[]>(
 		[],
 	);
+	const [activeProviderFilters, setActiveProviderFilters] = useState<
+		ProviderId[]
+	>([]);
 	const [activeMakerFilters, setActiveMakerFilters] = useState<string[]>([]);
 	const [showFilters, setShowFilters] = useState(false);
 
@@ -68,6 +72,11 @@ export function ModelSelector({
 		setRecentModelIds(newRecents);
 		localStorage.setItem(RECENT_MODELS_KEY, JSON.stringify(newRecents));
 	};
+
+	const availableProviders = useMemo(() => {
+		const providers = new Set(models.map((m) => m.provider));
+		return Array.from(providers).sort((a, b) => a.localeCompare(b));
+	}, [models]);
 
 	const availableMakers = useMemo(() => {
 		const makers = new Set(models.map((m) => m.maker || "Other"));
@@ -95,6 +104,11 @@ export function ModelSelector({
 			);
 		}
 
+		// Provider Filter
+		if (activeProviderFilters.length > 0) {
+			filtered = filtered.filter((m) => activeProviderFilters.includes(m.provider));
+		}
+
 		// Modality Filter
 		if (activeModalityFilters.length > 0) {
 			filtered = filtered.filter((m) => {
@@ -114,7 +128,13 @@ export function ModelSelector({
 		}
 
 		return filtered;
-	}, [models, searchQuery, activeModalityFilters, activeMakerFilters]);
+	}, [
+		models,
+		searchQuery,
+		activeModalityFilters,
+		activeMakerFilters,
+		activeProviderFilters,
+	]);
 
 	const recentModels = useMemo(() => {
 		return recentModelIds
@@ -130,6 +150,14 @@ export function ModelSelector({
 		);
 	};
 
+	const toggleProviderFilter = (provider: ProviderId) => {
+		setActiveProviderFilters((prev) =>
+			prev.includes(provider)
+				? prev.filter((p) => p !== provider)
+				: [...prev, provider],
+		);
+	};
+
 	const toggleMakerFilter = (maker: string) => {
 		setActiveMakerFilters((prev) =>
 			prev.includes(maker) ? prev.filter((p) => p !== maker) : [...prev, maker],
@@ -139,6 +167,7 @@ export function ModelSelector({
 	const clearFilters = () => {
 		setActiveModalityFilters([]);
 		setActiveMakerFilters([]);
+		setActiveProviderFilters([]);
 		setSearchQuery("");
 	};
 
@@ -278,6 +307,7 @@ export function ModelSelector({
 						))}
 
 						{(activeModalityFilters.length > 0 ||
+							activeProviderFilters.length > 0 ||
 							activeMakerFilters.length > 0) && (
 							<Button
 								variant="ghost"
@@ -299,7 +329,38 @@ export function ModelSelector({
 						<div className="grid grid-cols-3 gap-4 pt-2 border-t">
 							<div className="col-span-3">
 								<span className="text-xs font-medium text-muted-foreground mb-2 block">
-									Providers
+									Service Providers
+								</span>
+								<div className="flex flex-wrap gap-1.5">
+									{availableProviders.map((provider) => (
+										<Button
+											key={provider}
+											variant={
+												activeProviderFilters.includes(provider)
+													? "secondary"
+													: "outline"
+											}
+											size="sm"
+											className={cn(
+												"h-6 px-2 text-[10px]",
+												activeProviderFilters.includes(provider) &&
+													"bg-primary/10 hover:bg-primary/20 border-primary/20",
+											)}
+											onClick={(e) => {
+												e.preventDefault();
+												e.stopPropagation();
+												toggleProviderFilter(provider);
+											}}
+										>
+											{PROVIDER_NAMES[provider] || provider}
+										</Button>
+									))}
+								</div>
+							</div>
+
+							<div className="col-span-3">
+								<span className="text-xs font-medium text-muted-foreground mb-2 block">
+									Model Creators
 								</span>
 								<div className="flex flex-wrap gap-1.5">
 									{availableMakers.map((maker) => (
@@ -334,6 +395,7 @@ export function ModelSelector({
 				<div className="flex-1 overflow-y-auto">
 					{!searchQuery &&
 						activeModalityFilters.length === 0 &&
+						activeProviderFilters.length === 0 &&
 						activeMakerFilters.length === 0 &&
 						recentModels.length > 0 && (
 							<div className="p-2">
@@ -351,6 +413,7 @@ export function ModelSelector({
 						<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
 							{searchQuery ||
 							activeModalityFilters.length > 0 ||
+							activeProviderFilters.length > 0 ||
 							activeMakerFilters.length > 0
 								? "Search Results"
 								: "All Models"}
