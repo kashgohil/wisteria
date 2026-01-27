@@ -1,9 +1,12 @@
 import { ChatList } from "@/components/chat-list";
 import { MediaList } from "@/components/media-list";
+import { useProviderStatuses } from "@/components/model-selector/hooks/use-provider-statuses";
 import { ProjectList } from "@/components/project-list";
+import { ProviderStatusBar } from "@/components/provider-status-bar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Moon, Settings, Sun } from "lucide-react";
+import type { ModelInfo } from "../../shared/models";
 
 type Project = Awaited<
 	ReturnType<typeof window.wisteria.projects.list>
