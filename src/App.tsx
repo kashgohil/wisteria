@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import type { ContentPart, ModelInfo } from "../shared/models";
+import type { ContentPart, ModelInfo, ResponseImage } from "../shared/models";
 import type { ProviderId } from "../shared/providers";
 import "./index.css";
 import { cn } from "./lib/utils";
@@ -162,7 +162,7 @@ function App() {
       );
     });
     const offDone = window.wisteria.models.onStreamDone((payload) => {
-      void finalizeAssistantMessage(payload.requestId, payload.content);
+      void finalizeAssistantMessage(payload.requestId, payload.content, payload.images);
     });
     const offError = window.wisteria.models.onStreamError((payload) => {
       void handleStreamError(payload.requestId, payload.error);
@@ -489,19 +489,23 @@ function App() {
       { type: "text", text: userMessage.content },
     ];
 
+    // Track uploaded attachments to update UI immediately
+    const uploadedAttachments: Attachment[] = [];
+
     // Upload new attachments if any
     if (filesToUpload.length > 0) {
       try {
         setStatus("Uploading attachments…");
         for (const file of filesToUpload) {
           const buffer = await file.arrayBuffer();
-          await window.wisteria.attachments.upload(
+          const uploaded = await window.wisteria.attachments.upload(
             actualChatId,
             userMessage.id,
             buffer,
             file.name,
             file.type,
           );
+          uploadedAttachments.push(uploaded);
 
           if (file.type.startsWith("image/")) {
             const base64 = await blobToBase64(file);
@@ -538,13 +542,14 @@ function App() {
             const response = await fetch(`media://${attachment.file_path}`);
             const blob = await response.blob();
             const buffer = await blob.arrayBuffer();
-            await window.wisteria.attachments.upload(
+            const uploaded = await window.wisteria.attachments.upload(
               actualChatId,
               userMessage.id,
               buffer,
               attachment.file_name,
               attachment.mime_type,
             );
+            uploadedAttachments.push(uploaded);
 
             if (attachment.mime_type.startsWith("image/")) {
               const base64 = await blobToBase64(blob);
@@ -563,6 +568,14 @@ function App() {
         console.error("Failed to copy attachments:", err);
         // Don't fail the message, just log the error
       }
+    }
+
+    // Update messageAttachments state so uploaded files show immediately
+    if (uploadedAttachments.length > 0) {
+      setMessageAttachments((prev) => ({
+        ...prev,
+        [userMessage.id]: uploadedAttachments,
+      }));
     }
 
     // Construct history with attachments
@@ -646,6 +659,7 @@ function App() {
   const finalizeAssistantMessage = async (
     requestId: string,
     content: string,
+    images?: ResponseImage[],
   ) => {
     const meta = streamMeta.current[requestId];
     if (!meta) return;
@@ -659,6 +673,46 @@ function App() {
     setMessages((prev) =>
       prev.map((m) => (m.id === requestId ? persisted : m)),
     );
+
+    // Save images from model response as attachments
+    if (images && images.length > 0) {
+      const savedAttachments: Attachment[] = [];
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        try {
+          // Convert base64 to ArrayBuffer
+          const binaryString = atob(img.data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let j = 0; j < binaryString.length; j++) {
+            bytes[j] = binaryString.charCodeAt(j);
+          }
+          const buffer = bytes.buffer;
+
+          // Generate filename from mime type
+          const ext = img.mime_type.split("/")[1] || "png";
+          const fileName = `generated_${Date.now()}_${i}.${ext}`;
+
+          const attachment = await window.wisteria.attachments.upload(
+            meta.chatId,
+            persisted.id,
+            buffer,
+            fileName,
+            img.mime_type,
+          );
+          savedAttachments.push(attachment);
+        } catch (err) {
+          console.error("Failed to save model-generated image:", err);
+        }
+      }
+
+      if (savedAttachments.length > 0) {
+        setMessageAttachments((prev) => ({
+          ...prev,
+          [persisted.id]: savedAttachments,
+        }));
+      }
+    }
+
     setStatus("Ready");
     setIsSending(false);
     delete streamMeta.current[requestId];
@@ -746,6 +800,7 @@ function App() {
         <AppSidebar
           projects={projects}
           chats={allChatsForDisplay}
+          models={models}
           selectedProjectId={selectedProjectId}
           selectedChatId={selectedChatId}
           activeProject={activeProject}

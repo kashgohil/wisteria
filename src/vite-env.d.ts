@@ -1,11 +1,12 @@
 /// <reference types="vite/client" />
 
-import type { Chat, Message, Project } from "../electron/db";
+import type { Attachment, Chat, Message, Project } from "../electron/db";
 import type { ProjectUpdate } from "../electron/preload";
 import type {
 	ChatModelRequest,
 	ChatModelResponse,
 	ModelInfo,
+	ResponseImage,
 } from "../shared/models";
 
 declare global {
@@ -45,7 +46,7 @@ declare global {
 					}) => void,
 				) => () => void;
 				onStreamDone: (
-					handler: (payload: { requestId: string; content: string }) => void,
+					handler: (payload: { requestId: string; content: string; images?: ResponseImage[] }) => void,
 				) => () => void;
 				onStreamError: (
 					handler: (payload: { requestId: string; error: string }) => void,
@@ -56,6 +57,19 @@ declare global {
 				get: (key: string) => Promise<string | null>;
 				delete: (key: string) => Promise<boolean>;
 				list: () => Promise<{ key: string; value: string }[]>;
+			};
+			attachments: {
+				upload: (
+					chatId: string,
+					messageId: string,
+					fileBuffer: ArrayBuffer,
+					fileName: string,
+					mimeType: string,
+				) => Promise<Attachment>;
+				list: (filters?: { chatId?: string; type?: string }) => Promise<Attachment[]>;
+				getByMessage: (messageId: string) => Promise<Attachment[]>;
+				getPath: (attachmentId: string) => Promise<string>;
+				delete: (attachmentId: string) => Promise<boolean>;
 			};
 		};
 	}

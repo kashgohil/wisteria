@@ -159,6 +159,7 @@ export function registerIpcHandlers() {
         event.sender.send("models:stream-done", {
           requestId,
           content: response.content,
+          images: response.images,
         });
         return response;
       } catch (err) {

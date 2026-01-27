@@ -98,8 +98,14 @@ export type ChatModelRequest = {
 	requestId?: string;
 };
 
+export type ResponseImage = {
+	mime_type: string;
+	data: string; // base64
+};
+
 export type ChatModelResponse = {
 	content: string;
+	images?: ResponseImage[];
 	raw?: unknown;
 	requestId?: string;
 };

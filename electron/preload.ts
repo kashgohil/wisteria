@@ -3,6 +3,7 @@ import type {
 	ChatModelRequest,
 	ChatModelResponse,
 	ModelInfo,
+	ResponseImage,
 } from "../shared/models";
 import type { Attachment, Chat, Message, Project } from "./db";
 
@@ -66,11 +67,11 @@ const api = {
 			return () => ipcRenderer.removeListener("models:stream-chunk", listener);
 		},
 		onStreamDone: (
-			handler: (payload: { requestId: string; content: string }) => void,
+			handler: (payload: { requestId: string; content: string; images?: ResponseImage[] }) => void,
 		) => {
 			const listener = (
 				_event: unknown,
-				payload: { requestId: string; content: string },
+				payload: { requestId: string; content: string; images?: ResponseImage[] },
 			) => handler(payload);
 			ipcRenderer.on("models:stream-done", listener);
 			return () => ipcRenderer.removeListener("models:stream-done", listener);

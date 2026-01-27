@@ -1,11 +1,11 @@
 import type {
 	ChatModelRequest,
 	ChatModelResponse,
-	ContentPart,
 	ImageContentPart,
 	MessageContent,
 	ModelInfo,
 	ModelPricing,
+	ResponseImage,
 	TextContentPart,
 } from "../../shared/models";
 
@@ -1194,31 +1194,45 @@ async function sendGemini(
 	}
 
 	if (req.stream) {
-		const { content, raw } = await readGeminiStream(res, callbacks.onDelta);
-		return { content, raw, requestId: req.requestId };
+		const { content, images, raw } = await readGeminiStream(res, callbacks.onDelta);
+		return { content, images: images.length > 0 ? images : undefined, raw, requestId: req.requestId };
 	}
 
 	const data = (await res.json()) as {
 		candidates?: {
 			content?: {
-				parts?: { text?: string }[];
+				parts?: { text?: string; inlineData?: { mimeType?: string; data?: string } }[];
 			};
 		}[];
 	};
-	const content = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-	return { content, raw: data, requestId: req.requestId };
+	const parts = data.candidates?.[0]?.content?.parts ?? [];
+	let content = "";
+	const images: ResponseImage[] = [];
+	for (const part of parts) {
+		if (part.text) {
+			content += part.text;
+		}
+		if (part.inlineData?.data && part.inlineData?.mimeType) {
+			images.push({
+				mime_type: part.inlineData.mimeType,
+				data: part.inlineData.data,
+			});
+		}
+	}
+	return { content, images: images.length > 0 ? images : undefined, raw: data, requestId: req.requestId };
 }
 
 async function readGeminiStream(
 	res: Response,
 	onDelta?: (delta: string) => void,
-): Promise<{ content: string; raw: unknown[] }> {
+): Promise<{ content: string; images: ResponseImage[]; raw: unknown[] }> {
 	const reader = res.body?.getReader();
 	if (!reader) throw new Error("No streaming body available");
 
 	const decoder = new TextDecoder();
 	let buffer = "";
 	let full = "";
+	const images: ResponseImage[] = [];
 	const raw: unknown[] = [];
 
 	try {
@@ -1240,7 +1254,7 @@ async function readGeminiStream(
 					const json = JSON.parse(trimmed) as {
 						candidates?: {
 							content?: {
-								parts?: { text?: string }[];
+								parts?: { text?: string; inlineData?: { mimeType?: string; data?: string } }[];
 							};
 						}[];
 						error?: { message?: string };
@@ -1251,10 +1265,19 @@ async function readGeminiStream(
 						throw new Error(json.error.message || "Gemini stream error");
 					}
 
-					const delta = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-					if (delta) {
-						full += delta;
-						onDelta?.(delta);
+					// Process all parts for text and images
+					const parts = json.candidates?.[0]?.content?.parts ?? [];
+					for (const part of parts) {
+						if (part.text) {
+							full += part.text;
+							onDelta?.(part.text);
+						}
+						if (part.inlineData?.data && part.inlineData?.mimeType) {
+							images.push({
+								mime_type: part.inlineData.mimeType,
+								data: part.inlineData.data,
+							});
+						}
 					}
 				} catch (err) {
 					const msg = (err as { message?: string }).message;
@@ -1269,7 +1292,7 @@ async function readGeminiStream(
 		reader.releaseLock();
 	}
 
-	return { content: full, raw };
+	return { content: full, images, raw };
 }
 
 async function sendGrok(
